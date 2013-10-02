@@ -179,9 +179,16 @@ ClientApp::ClientApp()
   CreateBrowserDelegates(browser_delegates_);
   CreateRenderDelegates(render_delegates_);
 
-  // Default schemes that support cookies.
-  cookieable_schemes_.push_back("http");
-  cookieable_schemes_.push_back("https");
+  // Piaoger@Gateway: disable cookie
+  // Disable cookie
+  static bool sDisableCookie = false;
+  if(sDisableCookie) {
+      // Do nothing ...
+  } else {
+    // Default schemes that support cookies.
+    cookieable_schemes_.push_back("http");
+    cookieable_schemes_.push_back("https");
+  }
 }
 
 void ClientApp::SetMessageCallback(const std::string& message_name,

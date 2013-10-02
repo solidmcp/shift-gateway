@@ -50,6 +50,8 @@ ClientHandler::ClientHandler()
 
   if (command_line->HasSwitch(cefclient::kUrl))
     m_StartupURL = command_line->GetSwitchValue(cefclient::kUrl);
+  // Piaoger@Gateway: Change start Uri
+  // Start from our web root, not google.com instead.
   if (m_StartupURL.empty())
     m_StartupURL = "http://www.google.com/";
 
@@ -142,6 +144,9 @@ bool ClientHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
                                      int line) {
   REQUIRE_UI_THREAD();
 
+  // Piaoger@Gateway: Disable log
+
+  /*
   bool first_message;
   std::string logFile;
 
@@ -175,7 +180,7 @@ bool ClientHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
     if (first_message)
       SendNotification(NOTIFY_CONSOLE_MESSAGE);
   }
-
+  */
   return false;
 }
 
@@ -214,7 +219,12 @@ bool ClientHandler::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
                                   CefEventHandle os_event,
                                   bool* is_keyboard_shortcut) {
   ASSERT(m_bFocusOnEditableField == event.focus_on_editable_field);
+
+  // Piaoger@Gateway: Why disable spacebar brutely??
+  /*
   if (!event.focus_on_editable_field && event.windows_key_code == 0x20) {
+
+
     // Special handling for the space character when an input element does not
     // have focus. Handling the event in OnPreKeyEvent() keeps the event from
     // being processed in the renderer. If we instead handled the event in the
@@ -226,7 +236,7 @@ bool ClientHandler::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
     }
     return true;
   }
-
+  */
   return false;
 }
 
@@ -534,4 +544,22 @@ bool ClientHandler::ExecuteTestMenu(int command_id) {
 
   // Allow default handling to proceed.
   return false;
+}
+
+bool showToolbar()
+{
+    static bool sShowToolbar = true;
+    return sShowToolbar;
+}
+
+bool showNavigationTools()
+{
+    static bool sNavigationTools = true;
+    return sNavigationTools;
+}
+
+bool enableCookie()
+{
+    static bool sEnableCookit = true;
+    return sEnableCookit;
 }

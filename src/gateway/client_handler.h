@@ -284,4 +284,9 @@ class ClientHandler : public CefClient,
   IMPLEMENT_LOCKING(ClientHandler);
 };
 
+// Piaoger@Gateway: Show toolbar and navigation tools?
+bool showToolbar();
+bool showNavigationTools();
+bool enableCookie();
+
 #endif  // CEF_TESTS_CEFCLIENT_CLIENT_HANDLER_H_

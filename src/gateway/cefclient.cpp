@@ -77,6 +77,30 @@ void AppGetSettings(CefSettings& settings, CefRefPtr<ClientApp> app) {
   CefString(&settings.cache_path) =
       g_command_line->GetSwitchValue(cefclient::kCachePath);
 
+  // Piaoger@Gateway: Logging support
+  CefString(&settings.log_file) = g_command_line->GetSwitchValue(cefclient::kLogFile);
+  {
+    std::string str = g_command_line->GetSwitchValue(cefclient::kLogSeverity);
+
+    // Default to LOGSEVERITY_DISABLE
+    settings.log_severity = LOGSEVERITY_DISABLE;
+
+    if (!str.empty()) {
+      if (str == cefclient::kLogSeverity_Verbose)
+        settings.log_severity = LOGSEVERITY_VERBOSE;
+      else if (str == cefclient::kLogSeverity_Info)
+        settings.log_severity = LOGSEVERITY_INFO;
+      else if (str == cefclient::kLogSeverity_Warning)
+        settings.log_severity = LOGSEVERITY_WARNING;
+      else if (str == cefclient::kLogSeverity_Error)
+        settings.log_severity = LOGSEVERITY_ERROR;
+      else if (str == cefclient::kLogSeverity_ErrorReport)
+        settings.log_severity = LOGSEVERITY_ERROR_REPORT;
+      else if (str == cefclient::kLogSeverity_Disable)
+        settings.log_severity = LOGSEVERITY_DISABLE;
+    }
+  }
+
   // Retrieve command-line proxy configuration, if any.
   bool has_proxy = false;
   cef_proxy_type_t proxy_type = CEF_PROXY_TYPE_DIRECT;
@@ -135,10 +159,16 @@ void AppGetBrowserSettings(CefBrowserSettings& settings) {
       g_command_line->HasSwitch(cefclient::kJavaDisabled);
   settings.plugins_disabled =
       g_command_line->HasSwitch(cefclient::kPluginsDisabled);
-  settings.universal_access_from_file_urls_allowed =
-      g_command_line->HasSwitch(cefclient::kUniversalAccessFromFileUrlsAllowed);
-  settings.file_access_from_file_urls_allowed =
-      g_command_line->HasSwitch(cefclient::kFileAccessFromFileUrlsAllowed);
+
+  // Piaoger@Gateway: universal_access_from_file_urls_allowed
+  settings.universal_access_from_file_urls_allowed = true;
+
+  // Piaoger@Gateway: Enabled file:///
+  //   For more Chrome swithes, please see following pages:
+  //     http://src.chromium.org/viewvc/chrome/trunk/src/content/public/common/content_switches.h
+  //     http://peter.sh/experiments/chromium-command-line-switches/
+  settings.file_access_from_file_urls_allowed = true;
+
   settings.web_security_disabled =
       g_command_line->HasSwitch(cefclient::kWebSecurityDisabled);
   settings.xss_auditor_enabled =
@@ -189,8 +219,10 @@ void AppGetBrowserSettings(CefBrowserSettings& settings) {
       g_command_line->HasSwitch(cefclient::kAcceleratedPluginsDisabled);
   settings.developer_tools_disabled =
       g_command_line->HasSwitch(cefclient::kDeveloperToolsDisabled);
-  settings.fullscreen_enabled =
-      g_command_line->HasSwitch(cefclient::kFullscreenEnabled);
+
+    // Piaoger@Gateway: Enable fullscreen
+    settings.fullscreen_enabled = true;
+
 }
 
 void RunGetSourceTest(CefRefPtr<CefBrowser> browser) {

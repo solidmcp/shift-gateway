@@ -64,6 +64,17 @@ extern const char kProxyType_Named[];
 extern const char kProxyType_Pac[];
 extern const char kProxyConfig[];
 
+// Piaoger@Gateway: Logging support
+// Customized
+extern const char kLogFile[];
+extern const char kLogSeverity[];
+extern const char kLogSeverity_Verbose[];
+extern const char kLogSeverity_Info[];
+extern const char kLogSeverity_Warning[];
+extern const char kLogSeverity_Error[];
+extern const char kLogSeverity_ErrorReport[];
+extern const char kLogSeverity_Disable[];
+
 }  // namespace cefclient
 
 #endif  // CEF_TESTS_CEFCLIENT_CEFCLIENT_SWITCHES_H_
