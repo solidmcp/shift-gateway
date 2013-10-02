@@ -2,10 +2,10 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/client_app.h"
-#include "cefclient/client_renderer.h"
-#include "cefclient/dom_test.h"
-#include "cefclient/scheme_test.h"
+#include "gateway/client_app.h"
+#include "gateway/client_renderer.h"
+#include "gateway/dom_test.h"
+#include "gateway/scheme_test.h"
 
 // static
 void ClientApp::CreateBrowserDelegates(BrowserDelegateSet& delegates) {

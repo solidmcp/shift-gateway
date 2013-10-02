@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/cefclient.h"
+#include "gateway/cefclient.h"
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -13,12 +13,12 @@
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
 #include "include/cef_runnable.h"
-#include "cefclient/binding_test.h"
-#include "cefclient/client_handler.h"
-#include "cefclient/dom_test.h"
-#include "cefclient/resource.h"
-#include "cefclient/scheme_test.h"
-#include "cefclient/string_util.h"
+#include "gateway/binding_test.h"
+#include "gateway/client_handler.h"
+#include "gateway/dom_test.h"
+#include "gateway/resource.h"
+#include "gateway/scheme_test.h"
+#include "gateway/string_util.h"
 
 #define MAX_LOADSTRING 100
 #define MAX_URL_LENGTH  255
@@ -142,7 +142,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
   wcex.cbClsExtra    = 0;
   wcex.cbWndExtra    = 0;
   wcex.hInstance     = hInstance;
-  wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_CEFCLIENT));
+  wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GATEWAY));
   wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
   wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
   wcex.lpszMenuName  = MAKEINTRESOURCE(IDC_CEFCLIENT);

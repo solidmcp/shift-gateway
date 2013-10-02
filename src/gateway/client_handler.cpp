@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/client_handler.h"
+#include "gateway/client_handler.h"
 #include <algorithm>
 #include <stdio.h>
 #include <sstream>
@@ -13,13 +13,13 @@
 #include "include/cef_process_util.h"
 #include "include/cef_runnable.h"
 #include "include/wrapper/cef_stream_resource_handler.h"
-#include "cefclient/binding_test.h"
-#include "cefclient/cefclient.h"
-#include "cefclient/client_renderer.h"
-#include "cefclient/client_switches.h"
-#include "cefclient/dom_test.h"
-#include "cefclient/resource_util.h"
-#include "cefclient/string_util.h"
+#include "gateway/binding_test.h"
+#include "gateway/cefclient.h"
+#include "gateway/client_renderer.h"
+#include "gateway/client_switches.h"
+#include "gateway/dom_test.h"
+#include "gateway/resource_util.h"
+#include "gateway/string_util.h"
 
 
 // Custom menu command Ids.

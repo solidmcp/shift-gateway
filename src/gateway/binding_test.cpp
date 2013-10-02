@@ -2,13 +2,13 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/binding_test.h"
+#include "gateway/binding_test.h"
 
 #include <algorithm>
 #include <string>
 
 #include "include/wrapper/cef_stream_resource_handler.h"
-#include "cefclient/resource_util.h"
+#include "gateway/resource_util.h"
 
 namespace binding_test {
 
