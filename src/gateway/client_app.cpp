@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
@@ -62,7 +62,7 @@ void SetListValue(CefRefPtr<CefV8Value> list, int index,
   switch (type) {
     case VTYPE_LIST: {
       CefRefPtr<CefListValue> list = value->GetList(index);
-      new_value = CefV8Value::CreateArray(list->GetSize());
+      new_value = CefV8Value::CreateArray(static_cast<int>(list->GetSize()));
       SetList(list, new_value);
       } break;
     case VTYPE_BOOL:
@@ -92,7 +92,7 @@ void SetListValue(CefRefPtr<CefV8Value> list, int index,
 void SetList(CefRefPtr<CefListValue> source, CefRefPtr<CefV8Value> target) {
   ASSERT(target->IsArray());
 
-  int arg_length = source->GetSize();
+  int arg_length = static_cast<int>(source->GetSize());
   if (arg_length == 0)
     return;
 
@@ -174,21 +174,13 @@ class ClientAppExtensionHandler : public CefV8Handler {
 }  // namespace
 
 
-ClientApp::ClientApp()
-    : proxy_type_(CEF_PROXY_TYPE_DIRECT) {
+ClientApp::ClientApp() {
   CreateBrowserDelegates(browser_delegates_);
   CreateRenderDelegates(render_delegates_);
 
-  // Piaoger@Gateway: disable cookie
-  // Disable cookie
-  static bool sDisableCookie = false;
-  if(sDisableCookie) {
-      // Do nothing ...
-  } else {
-    // Default schemes that support cookies.
-    cookieable_schemes_.push_back("http");
-    cookieable_schemes_.push_back("https");
-  }
+  // Default schemes that support cookies.
+  cookieable_schemes_.push_back("http");
+  cookieable_schemes_.push_back("https");
 }
 
 void ClientApp::SetMessageCallback(const std::string& message_name,
@@ -222,7 +214,6 @@ void ClientApp::OnContextInitialized() {
   ASSERT(manager.get());
   manager->SetSupportedSchemes(cookieable_schemes_);
 
-  // Execute delegate callbacks.
   BrowserDelegateSet::iterator it = browser_delegates_.begin();
   for (; it != browser_delegates_.end(); ++it)
     (*it)->OnContextInitialized(this);
@@ -230,17 +221,22 @@ void ClientApp::OnContextInitialized() {
 
 void ClientApp::OnBeforeChildProcessLaunch(
       CefRefPtr<CefCommandLine> command_line) {
-  // Execute delegate callbacks.
   BrowserDelegateSet::iterator it = browser_delegates_.begin();
   for (; it != browser_delegates_.end(); ++it)
     (*it)->OnBeforeChildProcessLaunch(this, command_line);
 }
 
-void ClientApp::GetProxyForUrl(const CefString& url,
-                               CefProxyInfo& proxy_info) {
-  proxy_info.proxyType = proxy_type_;
-  if (!proxy_config_.empty())
-    CefString(&proxy_info.proxyList) = proxy_config_;
+void ClientApp::OnRenderProcessThreadCreated(
+    CefRefPtr<CefListValue> extra_info) {
+  BrowserDelegateSet::iterator it = browser_delegates_.begin();
+  for (; it != browser_delegates_.end(); ++it)
+    (*it)->OnRenderProcessThreadCreated(this, extra_info);
+}
+
+void ClientApp::OnRenderThreadCreated(CefRefPtr<CefListValue> extra_info) {
+  RenderDelegateSet::iterator it = render_delegates_.begin();
+  for (; it != render_delegates_.end(); ++it)
+    (*it)->OnRenderThreadCreated(this, extra_info);
 }
 
 void ClientApp::OnWebKitInitialized() {
@@ -266,25 +262,50 @@ void ClientApp::OnWebKitInitialized() {
   CefRegisterExtension("v8/app", app_code,
       new ClientAppExtensionHandler(this));
 
-  // Execute delegate callbacks.
   RenderDelegateSet::iterator it = render_delegates_.begin();
   for (; it != render_delegates_.end(); ++it)
     (*it)->OnWebKitInitialized(this);
 }
 
+void ClientApp::OnBrowserCreated(CefRefPtr<CefBrowser> browser) {
+  RenderDelegateSet::iterator it = render_delegates_.begin();
+  for (; it != render_delegates_.end(); ++it)
+    (*it)->OnBrowserCreated(this, browser);
+}
+
+void ClientApp::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) {
+  RenderDelegateSet::iterator it = render_delegates_.begin();
+  for (; it != render_delegates_.end(); ++it)
+    (*it)->OnBrowserDestroyed(this, browser);
+}
+
+bool ClientApp::OnBeforeNavigation(CefRefPtr<CefBrowser> browser,
+                                   CefRefPtr<CefFrame> frame,
+                                   CefRefPtr<CefRequest> request,
+                                   NavigationType navigation_type,
+                                   bool is_redirect) {
+  RenderDelegateSet::iterator it = render_delegates_.begin();
+  for (; it != render_delegates_.end(); ++it) {
+    if ((*it)->OnBeforeNavigation(this, browser, frame, request,
+                                  navigation_type, is_redirect)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void ClientApp::OnContextCreated(CefRefPtr<CefBrowser> browser,
-                               CefRefPtr<CefFrame> frame,
-                               CefRefPtr<CefV8Context> context) {
-  // Execute delegate callbacks.
+                                 CefRefPtr<CefFrame> frame,
+                                 CefRefPtr<CefV8Context> context) {
   RenderDelegateSet::iterator it = render_delegates_.begin();
   for (; it != render_delegates_.end(); ++it)
     (*it)->OnContextCreated(this, browser, frame, context);
 }
 
 void ClientApp::OnContextReleased(CefRefPtr<CefBrowser> browser,
-                                CefRefPtr<CefFrame> frame,
-                                CefRefPtr<CefV8Context> context) {
-  // Execute delegate callbacks.
+                                  CefRefPtr<CefFrame> frame,
+                                  CefRefPtr<CefV8Context> context) {
   RenderDelegateSet::iterator it = render_delegates_.begin();
   for (; it != render_delegates_.end(); ++it)
     (*it)->OnContextReleased(this, browser, frame, context);
@@ -302,10 +323,21 @@ void ClientApp::OnContextReleased(CefRefPtr<CefBrowser> browser,
   }
 }
 
+void ClientApp::OnUncaughtException(CefRefPtr<CefBrowser> browser,
+                                    CefRefPtr<CefFrame> frame,
+                                    CefRefPtr<CefV8Context> context,
+                                    CefRefPtr<CefV8Exception> exception,
+                                    CefRefPtr<CefV8StackTrace> stackTrace) {
+  RenderDelegateSet::iterator it = render_delegates_.begin();
+  for (; it != render_delegates_.end(); ++it) {
+    (*it)->OnUncaughtException(this, browser, frame, context, exception,
+                               stackTrace);
+  }
+}
+
 void ClientApp::OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
                                      CefRefPtr<CefFrame> frame,
                                      CefRefPtr<CefDOMNode> node) {
-  // Execute delegate callbacks.
   RenderDelegateSet::iterator it = render_delegates_.begin();
   for (; it != render_delegates_.end(); ++it)
     (*it)->OnFocusedNodeChanged(this, browser, frame, node);
@@ -319,7 +351,6 @@ bool ClientApp::OnProcessMessageReceived(
 
   bool handled = false;
 
-  // Execute delegate callbacks.
   RenderDelegateSet::iterator it = render_delegates_.begin();
   for (; it != render_delegates_.end() && !handled; ++it) {
     handled = (*it)->OnProcessMessageReceived(this, browser, source_process,
@@ -336,8 +367,13 @@ bool ClientApp::OnProcessMessageReceived(
         std::make_pair(message_name.ToString(),
                        browser->GetIdentifier()));
     if (it != callback_map_.end()) {
+      // Keep a local reference to the objects. The callback may remove itself
+      // from the callback map.
+      CefRefPtr<CefV8Context> context = it->second.first;
+      CefRefPtr<CefV8Value> callback = it->second.second;
+
       // Enter the context.
-      it->second.first->Enter();
+      context->Enter();
 
       CefV8ValueList arguments;
 
@@ -346,20 +382,20 @@ bool ClientApp::OnProcessMessageReceived(
 
       // Second argument is the list of message arguments.
       CefRefPtr<CefListValue> list = message->GetArgumentList();
-      CefRefPtr<CefV8Value> args = CefV8Value::CreateArray(list->GetSize());
+      CefRefPtr<CefV8Value> args =
+          CefV8Value::CreateArray(static_cast<int>(list->GetSize()));
       SetList(list, args);
       arguments.push_back(args);
 
       // Execute the callback.
-      CefRefPtr<CefV8Value> retval =
-          it->second.second->ExecuteFunction(NULL, arguments);
+      CefRefPtr<CefV8Value> retval = callback->ExecuteFunction(NULL, arguments);
       if (retval.get()) {
         if (retval->IsBool())
           handled = retval->GetBoolValue();
       }
 
       // Exit the context.
-      it->second.first->Exit();
+      context->Exit();
     }
   }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 Marshall A. Greenblatt. All rights reserved.
+// Copyright (c) 2013 Marshall A. Greenblatt. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -64,6 +64,22 @@ typedef struct _cef_callback_t {
   ///
   void (CEF_CALLBACK *cancel)(struct _cef_callback_t* self);
 } cef_callback_t;
+
+
+///
+// Generic callback structure used for asynchronous completion.
+///
+typedef struct _cef_completion_handler_t {
+  ///
+  // Base structure.
+  ///
+  cef_base_t base;
+
+  ///
+  // Method that will be called once the task is complete.
+  ///
+  void (CEF_CALLBACK *on_complete)(struct _cef_completion_handler_t* self);
+} cef_completion_handler_t;
 
 
 #ifdef __cplusplus

@@ -1,8 +1,8 @@
-// Copyright (c) 2010 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "gateway/cefclient.h"
+#include "cefclient/cefclient.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <sstream>
@@ -13,23 +13,10 @@
 #include "include/cef_frame.h"
 #include "include/cef_runnable.h"
 #include "include/cef_web_plugin.h"
-#include "gateway/client_handler.h"
-#include "gateway/client_switches.h"
-#include "gateway/string_util.h"
-#include "gateway/util.h"
-
-namespace {
-
-// Return the int representation of the specified string.
-int GetIntValue(const CefString& str) {
-  if (str.empty())
-    return 0;
-
-  std::string stdStr = str;
-  return atoi(stdStr.c_str());
-}
-
-}  // namespace
+#include "cefclient/client_handler.h"
+#include "cefclient/client_switches.h"
+#include "cefclient/string_util.h"
+#include "cefclient/util.h"
 
 CefRefPtr<ClientHandler> g_handler;
 CefRefPtr<CefCommandLine> g_command_line;
@@ -61,8 +48,7 @@ CefRefPtr<CefCommandLine> AppGetCommandLine() {
 }
 
 // Returns the application settings based on command line arguments.
-void AppGetSettings(CefSettings& settings, CefRefPtr<ClientApp> app) {
-  ASSERT(app.get());
+void AppGetSettings(CefSettings& settings) {
   ASSERT(g_command_line.get());
   if (!g_command_line.get())
     return;
@@ -77,152 +63,17 @@ void AppGetSettings(CefSettings& settings, CefRefPtr<ClientApp> app) {
   CefString(&settings.cache_path) =
       g_command_line->GetSwitchValue(cefclient::kCachePath);
 
-  // Piaoger@Gateway: Logging support
-  CefString(&settings.log_file) = g_command_line->GetSwitchValue(cefclient::kLogFile);
-  {
-    std::string str = g_command_line->GetSwitchValue(cefclient::kLogSeverity);
-
-    // Default to LOGSEVERITY_DISABLE
-    settings.log_severity = LOGSEVERITY_DISABLE;
-
-    if (!str.empty()) {
-      if (str == cefclient::kLogSeverity_Verbose)
-        settings.log_severity = LOGSEVERITY_VERBOSE;
-      else if (str == cefclient::kLogSeverity_Info)
-        settings.log_severity = LOGSEVERITY_INFO;
-      else if (str == cefclient::kLogSeverity_Warning)
-        settings.log_severity = LOGSEVERITY_WARNING;
-      else if (str == cefclient::kLogSeverity_Error)
-        settings.log_severity = LOGSEVERITY_ERROR;
-      else if (str == cefclient::kLogSeverity_ErrorReport)
-        settings.log_severity = LOGSEVERITY_ERROR_REPORT;
-      else if (str == cefclient::kLogSeverity_Disable)
-        settings.log_severity = LOGSEVERITY_DISABLE;
-    }
-  }
-
-  // Retrieve command-line proxy configuration, if any.
-  bool has_proxy = false;
-  cef_proxy_type_t proxy_type = CEF_PROXY_TYPE_DIRECT;
-  CefString proxy_config;
-
-  if (g_command_line->HasSwitch(cefclient::kProxyType)) {
-    std::string str = g_command_line->GetSwitchValue(cefclient::kProxyType);
-    if (str == cefclient::kProxyType_Direct) {
-      has_proxy = true;
-      proxy_type = CEF_PROXY_TYPE_DIRECT;
-    } else if (str == cefclient::kProxyType_Named ||
-               str == cefclient::kProxyType_Pac) {
-      proxy_config = g_command_line->GetSwitchValue(cefclient::kProxyConfig);
-      if (!proxy_config.empty()) {
-        has_proxy = true;
-        proxy_type = (str == cefclient::kProxyType_Named?
-                      CEF_PROXY_TYPE_NAMED:CEF_PROXY_TYPE_PAC_STRING);
-      }
-    }
-  }
-
-  if (has_proxy) {
-    // Provide a ClientApp instance to handle proxy resolution.
-    app->SetProxyConfig(proxy_type, proxy_config);
-  }
+  // Specify a port to enable DevTools if one isn't already specified.
+  if (!g_command_line->HasSwitch("remote-debugging-port"))
+    settings.remote_debugging_port = 8088;
 }
 
-// Returns the application browser settings based on command line arguments.
-void AppGetBrowserSettings(CefBrowserSettings& settings) {
+bool AppIsOffScreenRenderingEnabled() {
   ASSERT(g_command_line.get());
   if (!g_command_line.get())
-    return;
+    return false;
 
-  settings.remote_fonts_disabled =
-      g_command_line->HasSwitch(cefclient::kRemoteFontsDisabled);
-
-  CefString(&settings.default_encoding) =
-      g_command_line->GetSwitchValue(cefclient::kDefaultEncoding);
-
-  settings.encoding_detector_enabled =
-      g_command_line->HasSwitch(cefclient::kEncodingDetectorEnabled);
-  settings.javascript_disabled =
-      g_command_line->HasSwitch(cefclient::kJavascriptDisabled);
-  settings.javascript_open_windows_disallowed =
-      g_command_line->HasSwitch(cefclient::kJavascriptOpenWindowsDisallowed);
-  settings.javascript_close_windows_disallowed =
-      g_command_line->HasSwitch(cefclient::kJavascriptCloseWindowsDisallowed);
-  settings.javascript_access_clipboard_disallowed =
-      g_command_line->HasSwitch(
-          cefclient::kJavascriptAccessClipboardDisallowed);
-  settings.dom_paste_disabled =
-      g_command_line->HasSwitch(cefclient::kDomPasteDisabled);
-  settings.caret_browsing_enabled =
-      g_command_line->HasSwitch(cefclient::kCaretBrowsingDisabled);
-  settings.java_disabled =
-      g_command_line->HasSwitch(cefclient::kJavaDisabled);
-  settings.plugins_disabled =
-      g_command_line->HasSwitch(cefclient::kPluginsDisabled);
-
-  // Piaoger@Gateway: universal_access_from_file_urls_allowed
-  settings.universal_access_from_file_urls_allowed = true;
-
-  // Piaoger@Gateway: Enabled file:///
-  //   For more Chrome swithes, please see following pages:
-  //     http://src.chromium.org/viewvc/chrome/trunk/src/content/public/common/content_switches.h
-  //     http://peter.sh/experiments/chromium-command-line-switches/
-  settings.file_access_from_file_urls_allowed = true;
-
-  settings.web_security_disabled =
-      g_command_line->HasSwitch(cefclient::kWebSecurityDisabled);
-  settings.xss_auditor_enabled =
-      g_command_line->HasSwitch(cefclient::kXssAuditorEnabled);
-  settings.image_load_disabled =
-      g_command_line->HasSwitch(cefclient::kImageLoadingDisabled);
-  settings.shrink_standalone_images_to_fit =
-      g_command_line->HasSwitch(cefclient::kShrinkStandaloneImagesToFit);
-  settings.site_specific_quirks_disabled =
-      g_command_line->HasSwitch(cefclient::kSiteSpecificQuirksDisabled);
-  settings.text_area_resize_disabled =
-      g_command_line->HasSwitch(cefclient::kTextAreaResizeDisabled);
-  settings.page_cache_disabled =
-      g_command_line->HasSwitch(cefclient::kPageCacheDisabled);
-  settings.tab_to_links_disabled =
-      g_command_line->HasSwitch(cefclient::kTabToLinksDisabled);
-  settings.hyperlink_auditing_disabled =
-      g_command_line->HasSwitch(cefclient::kHyperlinkAuditingDisabled);
-  settings.user_style_sheet_enabled =
-      g_command_line->HasSwitch(cefclient::kUserStyleSheetEnabled);
-
-  CefString(&settings.user_style_sheet_location) =
-      g_command_line->GetSwitchValue(cefclient::kUserStyleSheetLocation);
-
-  settings.author_and_user_styles_disabled =
-      g_command_line->HasSwitch(cefclient::kAuthorAndUserStylesDisabled);
-  settings.local_storage_disabled =
-      g_command_line->HasSwitch(cefclient::kLocalStorageDisabled);
-  settings.databases_disabled =
-      g_command_line->HasSwitch(cefclient::kDatabasesDisabled);
-  settings.application_cache_disabled =
-      g_command_line->HasSwitch(cefclient::kApplicationCacheDisabled);
-  settings.webgl_disabled =
-      g_command_line->HasSwitch(cefclient::kWebglDisabled);
-  settings.accelerated_compositing_disabled =
-      g_command_line->HasSwitch(cefclient::kAcceleratedCompositingDisabled);
-  settings.accelerated_layers_disabled =
-      g_command_line->HasSwitch(cefclient::kAcceleratedLayersDisabled);
-  settings.accelerated_video_disabled =
-      g_command_line->HasSwitch(cefclient::kAcceleratedVideoDisabled);
-  settings.accelerated_2d_canvas_disabled =
-      g_command_line->HasSwitch(cefclient::kAcceledated2dCanvasDisabled);
-  settings.accelerated_painting_enabled =
-      g_command_line->HasSwitch(cefclient::kAcceleratedPaintingEnabled);
-  settings.accelerated_filters_enabled =
-      g_command_line->HasSwitch(cefclient::kAcceleratedFiltersEnabled);
-  settings.accelerated_plugins_disabled =
-      g_command_line->HasSwitch(cefclient::kAcceleratedPluginsDisabled);
-  settings.developer_tools_disabled =
-      g_command_line->HasSwitch(cefclient::kDeveloperToolsDisabled);
-
-    // Piaoger@Gateway: Enable fullscreen
-    settings.fullscreen_enabled = true;
-
+  return g_command_line->HasSwitch(cefclient::kOffScreenRenderingEnabled);
 }
 
 void RunGetSourceTest(CefRefPtr<CefBrowser> browser) {
@@ -294,10 +145,6 @@ void RunPopupTest(CefRefPtr<CefBrowser> browser) {
       "window.open('http://www.google.com');", "about:blank", 0);
 }
 
-void RunDialogTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL("http://tests/dialogs");
-}
-
 void RunPluginInfoTest(CefRefPtr<CefBrowser> browser) {
   class Visitor : public CefWebPluginInfoVisitor {
    public:
@@ -331,38 +178,6 @@ void RunPluginInfoTest(CefRefPtr<CefBrowser> browser) {
   CefVisitWebPluginInfo(new Visitor(browser));
 }
 
-void RunLocalStorageTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL("http://tests/localstorage");
-}
-
-void RunAccelerated2DCanvasTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL(
-      "http://mudcu.be/labs/JS1k/BreathingGalaxies.html");
-}
-
-void RunAcceleratedLayersTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL(
-      "http://webkit.org/blog-files/3d-transforms/poster-circle.html");
-}
-
-void RunWebGLTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL(
-      "http://webglsamples.googlecode.com/hg/field/field.html");
-}
-
-void RunHTML5VideoTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL(
-      "http://www.youtube.com/watch?v=siOHh0uzcuY&html5=True");
-}
-
-void RunXMLHTTPRequestTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL("http://tests/xmlhttprequest");
-}
-
-void RunDragDropTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL("http://html5demos.com/drag");
-}
-
-void RunGeolocationTest(CefRefPtr<CefBrowser> browser) {
-  browser->GetMainFrame()->LoadURL("http://html5demos.com/geo");
+void RunOtherTests(CefRefPtr<CefBrowser> browser) {
+  browser->GetMainFrame()->LoadURL("http://tests/other_tests");
 }

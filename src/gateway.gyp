@@ -5,11 +5,21 @@
 {
   'variables': {
     'chromium_code': 1,
+    'linux_use_gold_binary': 0,
+    'linux_use_gold_flags': 0,
     'conditions': [
       [ 'OS=="mac"', {
         # Don't use clang with CEF binary releases due to Chromium tree structure dependency.
         'clang': 0,
-      }]
+      }],
+      ['sysroot!=""', {
+        'pkg-config': './pkg-config-wrapper "<(sysroot)" "<(target_arch)"',
+      }, {
+        'pkg-config': 'pkg-config'
+      }],
+      [ 'OS=="win"', {
+        'multi_threaded_dll%': 0,
+      }],
     ]
   },
   'includes': [
@@ -52,6 +62,34 @@
       },
       'conditions': [
         ['OS=="win"', {
+          'actions': [
+            {
+              'action_name': 'copy_resources',
+              'msvs_cygwin_shell': 0,
+              'inputs': [],
+              'outputs': [
+                '<(PRODUCT_DIR)/copy_resources.stamp',
+              ],
+              'action': [
+                'xcopy /efy',
+                'Resources\*',
+                '$(OutDir)',
+              ],
+            },
+            {
+              'action_name': 'copy_libraries',
+              'msvs_cygwin_shell': 0,
+              'inputs': [],
+              'outputs': [
+                '<(PRODUCT_DIR)/copy_resources.stamp',
+              ],
+              'action': [
+                'xcopy /efy',
+                '$(ConfigurationName)\*.dll',
+                '$(OutDir)',
+              ],
+            },
+          ],
           'msvs_settings': {
             'VCLinkerTool': {
               # Set /SUBSYSTEM:WINDOWS.
@@ -66,13 +104,33 @@
               '-lrpcrt4.lib',
               '-lopengl32.lib',
               '-lglu32.lib',
-              '-llib/$(ConfigurationName)/libcef.lib'
+              '-l$(ConfigurationName)/libcef.lib'
             ],
           },
           'sources': [
             '<@(includes_win)',
             '<@(cefclient_sources_win)',
           ],
+        }],
+        [ 'OS=="win" and multi_threaded_dll', {
+          'configurations': {
+            'Debug': {
+              'msvs_settings': {
+                'VCCLCompilerTool': {
+                  'RuntimeLibrary': 3,
+                  'WarnAsError': 'false',
+                },
+              },
+            },
+            'Release': {
+              'msvs_settings': {
+                'VCCLCompilerTool': {
+                  'RuntimeLibrary': 2,
+                  'WarnAsError': 'false',
+                },
+              },
+            }
+          }
         }],
         [ 'OS=="mac"', {
           'product_name': 'cefclient',
@@ -135,6 +193,7 @@
           'link_settings': {
             'libraries': [
               '$(SDKROOT)/System/Library/Frameworks/AppKit.framework',
+              '$(SDKROOT)/System/Library/Frameworks/OpenGL.framework',
               '$(CONFIGURATION)/libcef.dylib',
             ],
           },
@@ -151,7 +210,30 @@
                 '<@(cefclient_bundle_resources_linux)',
               ],
             },
+            {
+              'destination': '<(PRODUCT_DIR)/',
+              'files': [
+                'Resources/cef.pak',
+                'Resources/devtools_resources.pak',
+                'Resources/locales/',
+                '$(BUILDTYPE)/libcef.so',
+                '$(BUILDTYPE)/libffmpegsumo.so',
+              ],
+            },
           ],
+          'dependencies': [
+            'gtk',
+          ],
+          'link_settings': {
+            'ldflags': [
+              # Look for libcef.so in the current directory. Path can also be
+              # specified using the LD_LIBRARY_PATH environment variable.
+              '-Wl,-rpath,.',
+            ],
+            'libraries': [
+              "$(BUILDTYPE)/libcef.so",
+            ],
+          },
           'sources': [
             '<@(includes_linux)',
             '<@(cefclient_sources_linux)',
@@ -179,6 +261,33 @@
         # Target build path.
         'SYMROOT': 'xcodebuild',
       },
+      'conditions': [
+        [ 'OS=="linux" or OS=="freebsd" or OS=="openbsd"', {
+          'dependencies': [
+            'gtk',
+          ],
+        }],
+        [ 'OS=="win" and multi_threaded_dll', {
+          'configurations': {
+            'Debug': {
+              'msvs_settings': {
+                'VCCLCompilerTool': {
+                  'RuntimeLibrary': 3,
+                  'WarnAsError': 'false',
+                },
+              },
+            },
+            'Release': {
+              'msvs_settings': {
+                'VCCLCompilerTool': {
+                  'RuntimeLibrary': 2,
+                  'WarnAsError': 'false',
+                },
+              },
+            }
+          }
+        }],
+      ],
     },
   ],
   'conditions': [
@@ -242,5 +351,32 @@
         },  # target cefclient_helper_app
       ],
     }],  # OS=="mac"
+    [ 'OS=="linux" or OS=="freebsd" or OS=="openbsd"', {
+      'targets': [
+        {
+          'target_name': 'gtk',
+          'type': 'none',
+          'variables': {
+            # gtk requires gmodule, but it does not list it as a dependency
+            # in some misconfigured systems.
+            # gtkglext is required by the cefclient OSR example.
+            'gtk_packages': 'gmodule-2.0 gtk+-2.0 gthread-2.0 gtkglext-1.0',
+          },
+          'direct_dependent_settings': {
+            'cflags': [
+              '$(shell <(pkg-config) --cflags <(gtk_packages))',
+            ],
+          },
+          'link_settings': {
+            'ldflags': [
+              '$(shell <(pkg-config) --libs-only-L --libs-only-other <(gtk_packages))',
+            ],
+            'libraries': [
+              '$(shell <(pkg-config) --libs-only-l <(gtk_packages))',
+            ],
+          },
+        },
+      ],
+    }],  # OS=="linux" or OS=="freebsd" or OS=="openbsd"
   ],
 }

@@ -1,8 +1,8 @@
-// Copyright (c) 2010 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "gateway/cefclient.h"
+#include "cefclient/cefclient.h"
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -13,12 +13,12 @@
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
 #include "include/cef_runnable.h"
-#include "gateway/binding_test.h"
-#include "gateway/client_handler.h"
-#include "gateway/dom_test.h"
-#include "gateway/resource.h"
-#include "gateway/scheme_test.h"
-#include "gateway/string_util.h"
+#include "cefclient/cefclient_osr_widget_win.h"
+#include "cefclient/client_handler.h"
+#include "cefclient/client_switches.h"
+#include "cefclient/resource.h"
+#include "cefclient/scheme_test.h"
+#include "cefclient/string_util.h"
 
 #define MAX_LOADSTRING 100
 #define MAX_URL_LENGTH  255
@@ -29,6 +29,7 @@
 HINSTANCE hInst;   // current instance
 TCHAR szTitle[MAX_LOADSTRING];  // The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];  // the main window class name
+TCHAR szOSRWindowClass[MAX_LOADSTRING];  // the OSR window class name
 char szWorkingDir[MAX_PATH];  // The current working directory
 
 // Forward declarations of functions included in this code module:
@@ -37,8 +38,23 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
+// Used for processing messages on the main application thread while running
+// in multi-threaded message loop mode.
+HWND hMessageWnd = NULL;
+HWND CreateMessageWindow(HINSTANCE hInstance);
+LRESULT CALLBACK MessageWndProc(HWND, UINT, WPARAM, LPARAM);
+
 // The global ClientHandler reference.
 extern CefRefPtr<ClientHandler> g_handler;
+
+class MainBrowserProvider : public OSRBrowserProvider {
+  virtual CefRefPtr<CefBrowser> GetBrowser() {
+    if (g_handler.get())
+      return g_handler->GetBrowser();
+
+    return NULL;
+  }
+} g_main_browser_provider;
 
 #if defined(OS_WIN)
 // Add Common Controls to the application manifest because it's required to
@@ -72,7 +88,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   CefSettings settings;
 
   // Populate the settings based on command line arguments.
-  AppGetSettings(settings, app);
+  AppGetSettings(settings);
 
   // Initialize CEF.
   CefInitialize(main_args, settings, app.get());
@@ -85,19 +101,14 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   // Initialize global strings
   LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
   LoadString(hInstance, IDC_CEFCLIENT, szWindowClass, MAX_LOADSTRING);
+  LoadString(hInstance, IDS_OSR_WIDGET_CLASS, szOSRWindowClass, MAX_LOADSTRING);
   MyRegisterClass(hInstance);
 
   // Perform application initialization
   if (!InitInstance (hInstance, nCmdShow))
     return FALSE;
 
-  // Piaoger:Disable main toolbar
-  // Disable main toolbar
-  if(!showToolbar()) {
-    hAccelTable = NULL;
-  } else {
-    hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CEFCLIENT));
-  }
+  hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CEFCLIENT));
 
   int result = 0;
 
@@ -106,6 +117,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
     // recieves a WM_QUIT message.
     CefRunMessageLoop();
   } else {
+    // Create a hidden window for message processing.
+    hMessageWnd = CreateMessageWindow(hInstance);
+    ASSERT(hMessageWnd);
+
     MSG msg;
 
     // Run the application message loop.
@@ -115,6 +130,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
         DispatchMessage(&msg);
       }
     }
+
+    DestroyWindow(hMessageWnd);
+    hMessageWnd = NULL;
 
     result = static_cast<int>(msg.wParam);
   }
@@ -148,17 +166,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
   wcex.cbClsExtra    = 0;
   wcex.cbWndExtra    = 0;
   wcex.hInstance     = hInstance;
-  wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GATEWAY));
+  wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_CEFCLIENT));
   wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
   wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
-
-  // Piaoger@Gateway: Mainmenu
-  if(!showToolbar()) {
-    wcex.lpszMenuName  = NULL;
-  } else {
-    wcex.lpszMenuName  = MAKEINTRESOURCE(IDC_CEFCLIENT);
-  }
-  
+  wcex.lpszMenuName  = MAKEINTRESOURCE(IDC_CEFCLIENT);
   wcex.lpszClassName = szWindowClass;
   wcex.hIconSm       = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -260,63 +271,67 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
 
       GetClientRect(hWnd, &rect);
 
-      // Piaoger@Gateway: Disable Toolbar
-      if(!showNavigationTools()) {
-        // Do nothing ...
-      } else {
-        backWnd = CreateWindow(L"BUTTON", L"Back",
+      backWnd = CreateWindow(L"BUTTON", L"Back",
                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                               | WS_DISABLED, x, 0, BUTTON_WIDTH, URLBAR_HEIGHT,
                               hWnd, (HMENU) IDC_NAV_BACK, hInst, 0);
-        x += BUTTON_WIDTH;
+      x += BUTTON_WIDTH;
 
-        forwardWnd = CreateWindow(L"BUTTON", L"Forward",
+      forwardWnd = CreateWindow(L"BUTTON", L"Forward",
                                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                                 | WS_DISABLED, x, 0, BUTTON_WIDTH,
                                 URLBAR_HEIGHT, hWnd, (HMENU) IDC_NAV_FORWARD,
                                 hInst, 0);
-        x += BUTTON_WIDTH;
+      x += BUTTON_WIDTH;
 
-        reloadWnd = CreateWindow(L"BUTTON", L"Reload",
+      reloadWnd = CreateWindow(L"BUTTON", L"Reload",
                                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                                 | WS_DISABLED, x, 0, BUTTON_WIDTH,
                                 URLBAR_HEIGHT, hWnd, (HMENU) IDC_NAV_RELOAD,
                                 hInst, 0);
-        x += BUTTON_WIDTH;
+      x += BUTTON_WIDTH;
 
-        stopWnd = CreateWindow(L"BUTTON", L"Stop",
+      stopWnd = CreateWindow(L"BUTTON", L"Stop",
                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                               | WS_DISABLED, x, 0, BUTTON_WIDTH, URLBAR_HEIGHT,
                               hWnd, (HMENU) IDC_NAV_STOP, hInst, 0);
-        x += BUTTON_WIDTH;
+      x += BUTTON_WIDTH;
 
-        editWnd = CreateWindow(L"EDIT", 0,
+      editWnd = CreateWindow(L"EDIT", 0,
                               WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT |
                               ES_AUTOVSCROLL | ES_AUTOHSCROLL| WS_DISABLED,
                               x, 0, rect.right - BUTTON_WIDTH * 4,
                               URLBAR_HEIGHT, hWnd, 0, hInst, 0);
 
-        // Assign the edit window's WNDPROC to this function so that we can
-        // capture the enter key
-        editWndOldProc =
-            reinterpret_cast<WNDPROC>(GetWindowLongPtr(editWnd, GWLP_WNDPROC));
-        SetWindowLongPtr(editWnd, GWLP_WNDPROC,
-            reinterpret_cast<LONG_PTR>(WndProc));
-        g_handler->SetEditHwnd(editWnd);
-        g_handler->SetButtonHwnds(backWnd, forwardWnd, reloadWnd, stopWnd);
+      // Assign the edit window's WNDPROC to this function so that we can
+      // capture the enter key
+      editWndOldProc =
+          reinterpret_cast<WNDPROC>(GetWindowLongPtr(editWnd, GWLP_WNDPROC));
+      SetWindowLongPtr(editWnd, GWLP_WNDPROC,
+          reinterpret_cast<LONG_PTR>(WndProc));
+      g_handler->SetEditHwnd(editWnd);
+      g_handler->SetButtonHwnds(backWnd, forwardWnd, reloadWnd, stopWnd);
 
-        rect.top += URLBAR_HEIGHT;
-      }
-      
+      rect.top += URLBAR_HEIGHT;
 
       CefWindowInfo info;
       CefBrowserSettings settings;
 
-      // Populate the settings based on command line arguments.
-      AppGetBrowserSettings(settings);
+      if (AppIsOffScreenRenderingEnabled()) {
+        CefRefPtr<CefCommandLine> cmd_line = AppGetCommandLine();
+        bool transparent =
+            cmd_line->HasSwitch(cefclient::kTransparentPaintingEnabled);
 
-      // Initialize window info to the defaults for a child window
-      info.SetAsChild(hWnd, rect);
+        CefRefPtr<OSRWindow> osr_window =
+            OSRWindow::Create(&g_main_browser_provider, transparent);
+        osr_window->CreateWidget(hWnd, rect, hInst, szOSRWindowClass);
+        info.SetAsOffScreen(osr_window->hwnd());
+        info.SetTransparentPainting(transparent ? TRUE : FALSE);
+        g_handler->SetOSRHandler(osr_window.get());
+      } else {
+        // Initialize window info to the defaults for a child window.
+        info.SetAsChild(hWnd, rect);
+      }
 
       // Creat the new child browser window
       CefBrowserHost::CreateBrowser(info, g_handler.get(),
@@ -338,22 +353,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
         DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
         return 0;
       case IDM_EXIT:
-        DestroyWindow(hWnd);
+        if (g_handler.get())
+          g_handler->CloseAllBrowsers(false);
         return 0;
       case ID_WARN_CONSOLEMESSAGE:
         if (g_handler.get()) {
           std::wstringstream ss;
           ss << L"Console messages will be written to "
               << std::wstring(CefString(g_handler->GetLogFile()));
-
-          // Piaoger@Gateway: disable messagebox
-          // Disable console message box
-          if(!showNavigationTools()) {
-          // Do nothing ...
-          } else {
-            MessageBox(hWnd, ss.str().c_str(), L"Console Messages",
-                MB_OK | MB_ICONINFORMATION);
-          }
+          MessageBox(hWnd, ss.str().c_str(), L"Console Messages",
+              MB_OK | MB_ICONINFORMATION);
         }
         return 0;
       case ID_WARN_DOWNLOADCOMPLETE:
@@ -405,57 +414,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
         if (browser.get())
           RunRequestTest(browser);
         return 0;
-      case ID_TESTS_SCHEME_HANDLER:  // Test the scheme handler
-        if (browser.get())
-          scheme_test::RunTest(browser);
-        return 0;
-      case ID_TESTS_BINDING:  // Test JavaScript binding
-        if (browser.get())
-          binding_test::RunTest(browser);
-        return 0;
-      case ID_TESTS_DIALOGS:  // Test JavaScript dialogs
-        if (browser.get())
-          RunDialogTest(browser);
-        return 0;
       case ID_TESTS_PLUGIN_INFO:  // Test plugin info
         if (browser.get())
           RunPluginInfoTest(browser);
-        return 0;
-      case ID_TESTS_DOM_ACCESS:  // Test DOM access
-        if (browser.get())
-          dom_test::RunTest(browser);
-        return 0;
-      case ID_TESTS_LOCALSTORAGE:  // Test localStorage
-        if (browser.get())
-          RunLocalStorageTest(browser);
-        return 0;
-      case ID_TESTS_ACCELERATED2DCANVAS:  // Test accelerated 2d canvas
-        if (browser.get())
-          RunAccelerated2DCanvasTest(browser);
-        return 0;
-      case ID_TESTS_ACCELERATEDLAYERS:  // Test accelerated layers
-        if (browser.get())
-          RunAcceleratedLayersTest(browser);
-        return 0;
-      case ID_TESTS_WEBGL:  // Test WebGL
-        if (browser.get())
-          RunWebGLTest(browser);
-        return 0;
-      case ID_TESTS_HTML5VIDEO:  // Test HTML5 video
-        if (browser.get())
-          RunHTML5VideoTest(browser);
-        return 0;
-      case ID_TESTS_XMLHTTPREQUEST:  // Test XMLHttpRequest
-        if (browser.get())
-          RunXMLHTTPRequestTest(browser);
-        return 0;
-      case ID_TESTS_DRAGDROP:  // Test drag & drop
-        if (browser.get())
-          RunDragDropTest(browser);
-        return 0;
-      case ID_TESTS_GEOLOCATION:  // Test geolocation
-        if (browser.get())
-          RunGeolocationTest(browser);
         return 0;
       case ID_TESTS_ZOOM_IN:
         if (browser.get())
@@ -468,6 +429,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
       case ID_TESTS_ZOOM_RESET:
         if (browser.get())
           browser->GetHost()->SetZoomLevel(0.0);
+        return 0;
+      case ID_TESTS_TRACING_BEGIN:
+        g_handler->BeginTracing();
+        return 0;
+      case ID_TESTS_TRACING_END:
+        g_handler->EndTracing();
+        return 0;
+      case ID_TESTS_OTHER_TESTS:
+        if (browser.get())
+          RunOtherTests(browser);
         return 0;
       }
       break;
@@ -500,26 +471,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
           // window size
           RECT rect;
           GetClientRect(hWnd, &rect);
+          rect.top += URLBAR_HEIGHT;
 
-          // Piaoger@Gateway: Disable Toolbar
-          int urloffset = 0;
-          if(!showNavigationTools()) {
-            // Do nothing ... 
-          } else {
-            rect.top += URLBAR_HEIGHT;
-            urloffset = rect.left + BUTTON_WIDTH * 4;
-          }
+          int urloffset = rect.left + BUTTON_WIDTH * 4;
 
           HDWP hdwp = BeginDeferWindowPos(1);
-
-          // Piaoger@Gateway: Disable Toolbar
-          if(!showNavigationTools()) {
-            // Do nothing ... 
-          } else {
-            hdwp = DeferWindowPos(hdwp, editWnd, NULL, urloffset,
+          hdwp = DeferWindowPos(hdwp, editWnd, NULL, urloffset,
             0, rect.right - urloffset, URLBAR_HEIGHT, SWP_NOZORDER);
-          }
-
           hdwp = DeferWindowPos(hdwp, hwnd, NULL,
             rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
             SWP_NOZORDER);
@@ -540,19 +498,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
       }
       break;
 
-    case WM_CLOSE:
-      if (g_handler.get()) {
-        CefRefPtr<CefBrowser> browser = g_handler->GetBrowser();
-        if (browser.get()) {
-          // Let the browser window know we are about to destroy it.
-          browser->GetHost()->ParentWindowWillClose();
-        }
+    case WM_ENTERMENULOOP:
+      if (!wParam) {
+        // Entering the menu loop for the application menu.
+        CefSetOSModalLoop(true);
       }
       break;
 
+    case WM_EXITMENULOOP:
+      if (!wParam) {
+        // Exiting the menu loop for the application menu.
+        CefSetOSModalLoop(false);
+      }
+      break;
+
+    case WM_CLOSE:
+      if (g_handler.get() && !g_handler->IsClosing()) {
+        CefRefPtr<CefBrowser> browser = g_handler->GetBrowser();
+        if (browser.get()) {
+          // Notify the browser window that we would like to close it. This
+          // will result in a call to ClientHandler::DoClose() if the
+          // JavaScript 'onbeforeunload' event handler allows it.
+          browser->GetHost()->CloseBrowser(false);
+
+          // Cancel the close.
+          return 0;
+        }
+      }
+
+      // Allow the close.
+      break;
+
     case WM_DESTROY:
-      // The frame window has exited
-      PostQuitMessage(0);
+      // Quitting CEF is handled in ClientHandler::OnBeforeClose().
       return 0;
     }
 
@@ -577,9 +555,50 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
   return (INT_PTR)FALSE;
 }
 
+HWND CreateMessageWindow(HINSTANCE hInstance) {
+  static const wchar_t kWndClass[] = L"ClientMessageWindow";
+
+  WNDCLASSEX wc = {0};
+  wc.cbSize = sizeof(wc);
+  wc.lpfnWndProc = MessageWndProc;
+  wc.hInstance = hInstance;
+  wc.lpszClassName = kWndClass;
+  RegisterClassEx(&wc);
+
+  return CreateWindow(kWndClass, 0, 0, 0, 0, 0, 0, HWND_MESSAGE, 0,
+                      hInstance, 0);
+}
+
+LRESULT CALLBACK MessageWndProc(HWND hWnd, UINT message, WPARAM wParam,
+                                LPARAM lParam) {
+  switch (message) {
+    case WM_COMMAND: {
+      int wmId = LOWORD(wParam);
+      switch (wmId) {
+        case ID_QUIT:
+          PostQuitMessage(0);
+          return 0;
+      }
+    }
+  }
+  return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
 
 // Global functions
 
 std::string AppGetWorkingDirectory() {
   return szWorkingDir;
+}
+
+void AppQuitMessageLoop() {
+  CefRefPtr<CefCommandLine> command_line = AppGetCommandLine();
+  if (command_line->HasSwitch(cefclient::kMultiThreadedMessageLoop)) {
+    // Running in multi-threaded message loop mode. Need to execute
+    // PostQuitMessage on the main application thread.
+    ASSERT(hMessageWnd);
+    PostMessage(hMessageWnd, WM_COMMAND, ID_QUIT, 0);
+  } else {
+    CefQuitMessageLoop();
+  }
 }

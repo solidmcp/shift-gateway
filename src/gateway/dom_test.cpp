@@ -2,13 +2,13 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "gateway/dom_test.h"
+#include "cefclient/dom_test.h"
 
 #include <sstream>
 #include <string>
 
 #include "include/cef_dom.h"
-#include "gateway/util.h"
+#include "cefclient/util.h"
 
 namespace dom_test {
 
@@ -123,11 +123,6 @@ class DOMRenderDelegate : public ClientApp::RenderDelegate {
 
 void CreateRenderDelegates(ClientApp::RenderDelegateSet& delegates) {
   delegates.insert(new DOMRenderDelegate);
-}
-
-void RunTest(CefRefPtr<CefBrowser> browser) {
-  // Load the test URL.
-  browser->GetMainFrame()->LoadURL(kTestUrl);
 }
 
 void OnLoadEnd(CefRefPtr<CefBrowser> browser) {

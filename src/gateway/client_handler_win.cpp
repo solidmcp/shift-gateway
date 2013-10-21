@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "gateway/client_handler.h"
+#include "cefclient/client_handler.h"
 
 #include <string>
 #include <windows.h>
@@ -10,7 +10,7 @@
 
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
-#include "gateway/resource.h"
+#include "cefclient/resource.h"
 
 void ClientHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefFrame> frame,
@@ -55,31 +55,16 @@ void ClientHandler::SendNotification(NotificationType type) {
 }
 
 void ClientHandler::SetLoading(bool isLoading) {
-  // Piaoger@Gateway:Hide Toolbar
-  if(!showNavigationTools()) {
-    // Do nothing..
-  } else {
-    ASSERT(m_EditHwnd != NULL && m_ReloadHwnd != NULL && m_StopHwnd != NULL);
-    EnableWindow(m_EditHwnd, TRUE);
-    EnableWindow(m_ReloadHwnd, !isLoading);
-    EnableWindow(m_StopHwnd, isLoading);
-  }
-
+  ASSERT(m_EditHwnd != NULL && m_ReloadHwnd != NULL && m_StopHwnd != NULL);
+  EnableWindow(m_EditHwnd, TRUE);
+  EnableWindow(m_ReloadHwnd, !isLoading);
+  EnableWindow(m_StopHwnd, isLoading);
 }
 
 void ClientHandler::SetNavState(bool canGoBack, bool canGoForward) {
-    // Piaoger@Gateway:Hide Toolbar
-    if(!showNavigationTools()) {
-        // Do nothing..
-    } else {
-      ASSERT(m_BackHwnd != NULL && m_ForwardHwnd != NULL);
-      EnableWindow(m_BackHwnd, canGoBack);
-      EnableWindow(m_ForwardHwnd, canGoForward);
-    }
-}
-
-void ClientHandler::CloseMainWindow() {
-  ::PostMessage(m_MainHwnd, WM_CLOSE, 0, 0);
+  ASSERT(m_BackHwnd != NULL && m_ForwardHwnd != NULL);
+  EnableWindow(m_BackHwnd, canGoBack);
+  EnableWindow(m_ForwardHwnd, canGoForward);
 }
 
 std::string ClientHandler::GetDownloadPath(const std::string& file_name) {

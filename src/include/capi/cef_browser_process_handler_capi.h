@@ -1,4 +1,4 @@
-// Copyright (c) 2012 Marshall A. Greenblatt. All rights reserved.
+// Copyright (c) 2013 Marshall A. Greenblatt. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -57,14 +57,6 @@ typedef struct _cef_browser_process_handler_t {
   cef_base_t base;
 
   ///
-  // Return the handler for proxy events. If no handler is returned the default
-  // system handler will be used. This function is called on the browser process
-  // IO thread.
-  ///
-  struct _cef_proxy_handler_t* (CEF_CALLBACK *get_proxy_handler)(
-      struct _cef_browser_process_handler_t* self);
-
-  ///
   // Called on the browser process UI thread immediately after the CEF context
   // has been initialized.
   ///
@@ -72,12 +64,26 @@ typedef struct _cef_browser_process_handler_t {
       struct _cef_browser_process_handler_t* self);
 
   ///
-  // Called on the browser process IO thread before a child process is launched.
-  // Provides an opportunity to modify the child process command line.
+  // Called before a child process is launched. Will be called on the browser
+  // process UI thread when launching a render process and on the browser
+  // process IO thread when launching a GPU or plugin process. Provides an
+  // opportunity to modify the child process command line. Do not keep a
+  // reference to |command_line| outside of this function.
   ///
   void (CEF_CALLBACK *on_before_child_process_launch)(
       struct _cef_browser_process_handler_t* self,
       struct _cef_command_line_t* command_line);
+
+  ///
+  // Called on the browser process IO thread after the main thread has been
+  // created for a new render process. Provides an opportunity to specify extra
+  // information that will be passed to
+  // cef_render_process_handler_t::on_render_thread_created() in the render
+  // process. Do not keep a reference to |extra_info| outside of this function.
+  ///
+  void (CEF_CALLBACK *on_render_process_thread_created)(
+      struct _cef_browser_process_handler_t* self,
+      struct _cef_list_value_t* extra_info);
 } cef_browser_process_handler_t;
 
 

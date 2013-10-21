@@ -2,13 +2,13 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "gateway/client_renderer.h"
+#include "cefclient/client_renderer.h"
 
 #include <sstream>
 #include <string>
 
 #include "include/cef_dom.h"
-#include "gateway/util.h"
+#include "cefclient/util.h"
 
 namespace client_renderer {
 

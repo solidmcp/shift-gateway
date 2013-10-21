@@ -7,7 +7,7 @@
 #pragma once
 
 #include "include/cef_base.h"
-#include "gateway/client_app.h"
+#include "cefclient/client_app.h"
 
 namespace dom_test {
 
@@ -16,9 +16,6 @@ extern const char kTestUrl[];
 
 // Create the render delegate.
 void CreateRenderDelegates(ClientApp::RenderDelegateSet& delegates);
-
-// Run the test.
-void RunTest(CefRefPtr<CefBrowser> browser);
 
 // Continue the test after the page has loaded.
 void OnLoadEnd(CefRefPtr<CefBrowser> browser);

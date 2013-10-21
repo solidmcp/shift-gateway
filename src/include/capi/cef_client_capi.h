@@ -1,4 +1,4 @@
-// Copyright (c) 2012 Marshall A. Greenblatt. All rights reserved.
+// Copyright (c) 2013 Marshall A. Greenblatt. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -62,6 +62,13 @@ typedef struct _cef_client_t {
       struct _cef_client_t* self);
 
   ///
+  // Return the handler for dialogs. If no handler is provided the default
+  // implementation will be used.
+  ///
+  struct _cef_dialog_handler_t* (CEF_CALLBACK *get_dialog_handler)(
+      struct _cef_client_t* self);
+
+  ///
   // Return the handler for browser display state events.
   ///
   struct _cef_display_handler_t* (CEF_CALLBACK *get_display_handler)(
@@ -72,6 +79,12 @@ typedef struct _cef_client_t {
   // will not be allowed.
   ///
   struct _cef_download_handler_t* (CEF_CALLBACK *get_download_handler)(
+      struct _cef_client_t* self);
+
+  ///
+  // Return the handler for drag events.
+  ///
+  struct _cef_drag_handler_t* (CEF_CALLBACK *get_drag_handler)(
       struct _cef_client_t* self);
 
   ///
@@ -110,6 +123,12 @@ typedef struct _cef_client_t {
   // Return the handler for browser load status events.
   ///
   struct _cef_load_handler_t* (CEF_CALLBACK *get_load_handler)(
+      struct _cef_client_t* self);
+
+  ///
+  // Return the handler for off-screen rendering events.
+  ///
+  struct _cef_render_handler_t* (CEF_CALLBACK *get_render_handler)(
       struct _cef_client_t* self);
 
   ///

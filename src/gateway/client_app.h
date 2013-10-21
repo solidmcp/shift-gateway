@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
@@ -15,62 +15,72 @@
 
 class ClientApp : public CefApp,
                   public CefBrowserProcessHandler,
-                  public CefProxyHandler,
                   public CefRenderProcessHandler {
  public:
   // Interface for browser delegates. All BrowserDelegates must be returned via
   // CreateBrowserDelegates. Do not perform work in the BrowserDelegate
-  // constructor.
+  // constructor. See CefBrowserProcessHandler for documentation.
   class BrowserDelegate : public virtual CefBase {
    public:
-    // Called on the browser process UI thread immediately after the CEF context
-    // has been initialized.
-    virtual void OnContextInitialized(CefRefPtr<ClientApp> app) {
-    }
+    virtual void OnContextInitialized(CefRefPtr<ClientApp> app) {}
 
-    // Called on the browser process IO thread before a child process is launched.
-    // Provides an opportunity to modify the child process command line.
     virtual void OnBeforeChildProcessLaunch(
         CefRefPtr<ClientApp> app,
-        CefRefPtr<CefCommandLine> command_line) {
-    }
+        CefRefPtr<CefCommandLine> command_line) {}
+
+    virtual void OnRenderProcessThreadCreated(
+        CefRefPtr<ClientApp> app,
+        CefRefPtr<CefListValue> extra_info) {}
   };
 
   typedef std::set<CefRefPtr<BrowserDelegate> > BrowserDelegateSet;
 
   // Interface for renderer delegates. All RenderDelegates must be returned via
   // CreateRenderDelegates. Do not perform work in the RenderDelegate
-  // constructor.
+  // constructor. See CefRenderProcessHandler for documentation.
   class RenderDelegate : public virtual CefBase {
    public:
-    // Called when WebKit is initialized. Used to register V8 extensions.
-    virtual void OnWebKitInitialized(CefRefPtr<ClientApp> app) {
-    };
+    virtual void OnRenderThreadCreated(CefRefPtr<ClientApp> app,
+                                       CefRefPtr<CefListValue> extra_info) {}
 
-    // Called when a V8 context is created. Used to create V8 window bindings
-    // and set message callbacks. RenderDelegates should check for unique URLs
-    // to avoid interfering with each other.
+    virtual void OnWebKitInitialized(CefRefPtr<ClientApp> app) {}
+
+    virtual void OnBrowserCreated(CefRefPtr<ClientApp> app,
+                                  CefRefPtr<CefBrowser> browser) {}
+
+    virtual void OnBrowserDestroyed(CefRefPtr<ClientApp> app,
+                                    CefRefPtr<CefBrowser> browser) {}
+
+    virtual bool OnBeforeNavigation(CefRefPtr<ClientApp> app,
+                                    CefRefPtr<CefBrowser> browser,
+                                    CefRefPtr<CefFrame> frame,
+                                    CefRefPtr<CefRequest> request,
+                                    cef_navigation_type_t navigation_type,
+                                    bool is_redirect) {
+      return false;
+    }
+
     virtual void OnContextCreated(CefRefPtr<ClientApp> app,
                                   CefRefPtr<CefBrowser> browser,
                                   CefRefPtr<CefFrame> frame,
-                                  CefRefPtr<CefV8Context> context) {
-    };
+                                  CefRefPtr<CefV8Context> context) {}
 
-    // Called when a V8 context is released. Used to clean up V8 window
-    // bindings. RenderDelegates should check for unique URLs to avoid
-    // interfering with each other.
     virtual void OnContextReleased(CefRefPtr<ClientApp> app,
                                    CefRefPtr<CefBrowser> browser,
                                    CefRefPtr<CefFrame> frame,
-                                   CefRefPtr<CefV8Context> context) {
-    };
+                                   CefRefPtr<CefV8Context> context) {}
 
-    // Called when the focused node in a frame has changed.
+    virtual void OnUncaughtException(CefRefPtr<ClientApp> app,
+                                     CefRefPtr<CefBrowser> browser,
+                                     CefRefPtr<CefFrame> frame,
+                                     CefRefPtr<CefV8Context> context,
+                                     CefRefPtr<CefV8Exception> exception,
+                                     CefRefPtr<CefV8StackTrace> stackTrace) {}
+
     virtual void OnFocusedNodeChanged(CefRefPtr<ClientApp> app,
                                       CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
-                                      CefRefPtr<CefDOMNode> node) {
-    }
+                                      CefRefPtr<CefDOMNode> node) {}
 
     // Called when a process message is received. Return true if the message was
     // handled and should not be passed on to other handlers. RenderDelegates
@@ -88,13 +98,6 @@ class ClientApp : public CefApp,
   typedef std::set<CefRefPtr<RenderDelegate> > RenderDelegateSet;
 
   ClientApp();
-
-  // Set the proxy configuration. Should only be called during initialization.
-  void SetProxyConfig(cef_proxy_type_t proxy_type,
-                      const CefString& proxy_config) {
-    proxy_type_ = proxy_type;
-    proxy_config_ = proxy_config;
-  }
 
   // Set a JavaScript callback for the specified |message_name| and |browser_id|
   // combination. Will automatically be removed when the associated context is
@@ -136,23 +139,35 @@ class ClientApp : public CefApp,
       OVERRIDE { return this; }
 
   // CefBrowserProcessHandler methods.
-  virtual CefRefPtr<CefProxyHandler> GetProxyHandler() OVERRIDE { return this; }
   virtual void OnContextInitialized() OVERRIDE;
   virtual void OnBeforeChildProcessLaunch(
       CefRefPtr<CefCommandLine> command_line) OVERRIDE;
-
-  // CefProxyHandler methods.
-  virtual void GetProxyForUrl(const CefString& url,
-                              CefProxyInfo& proxy_info) OVERRIDE;
+  virtual void OnRenderProcessThreadCreated(CefRefPtr<CefListValue> extra_info)
+                                            OVERRIDE;
 
   // CefRenderProcessHandler methods.
+  virtual void OnRenderThreadCreated(CefRefPtr<CefListValue> extra_info)
+                                     OVERRIDE;
   virtual void OnWebKitInitialized() OVERRIDE;
+  virtual void OnBrowserCreated(CefRefPtr<CefBrowser> browser) OVERRIDE;
+  virtual void OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) OVERRIDE;
+  virtual bool OnBeforeNavigation(CefRefPtr<CefBrowser> browser,
+                                  CefRefPtr<CefFrame> frame,
+                                  CefRefPtr<CefRequest> request,
+                                  NavigationType navigation_type,
+                                  bool is_redirect) OVERRIDE;
   virtual void OnContextCreated(CefRefPtr<CefBrowser> browser,
                                 CefRefPtr<CefFrame> frame,
                                 CefRefPtr<CefV8Context> context) OVERRIDE;
   virtual void OnContextReleased(CefRefPtr<CefBrowser> browser,
                                  CefRefPtr<CefFrame> frame,
                                  CefRefPtr<CefV8Context> context) OVERRIDE;
+  virtual void OnUncaughtException(CefRefPtr<CefBrowser> browser,
+                                   CefRefPtr<CefFrame> frame,
+                                   CefRefPtr<CefV8Context> context,
+                                   CefRefPtr<CefV8Exception> exception,
+                                   CefRefPtr<CefV8StackTrace> stackTrace)
+                                   OVERRIDE;
   virtual void OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefFrame> frame,
                                     CefRefPtr<CefDOMNode> node) OVERRIDE;
@@ -160,10 +175,6 @@ class ClientApp : public CefApp,
       CefRefPtr<CefBrowser> browser,
       CefProcessId source_process,
       CefRefPtr<CefProcessMessage> message) OVERRIDE;
-
-  // Proxy configuration.
-  cef_proxy_type_t proxy_type_;
-  CefString proxy_config_;
 
   // Map of message callbacks.
   typedef std::map<std::pair<std::string, int>,

@@ -6,11 +6,12 @@
 #define CEF_TESTS_CEFCLIENT_CLIENT_HANDLER_H_
 #pragma once
 
+#include <list>
 #include <map>
 #include <set>
 #include <string>
 #include "include/cef_client.h"
-#include "gateway/util.h"
+#include "cefclient/util.h"
 
 
 // Define this value to redirect all popup URLs to the main application browser
@@ -23,10 +24,12 @@ class ClientHandler : public CefClient,
                       public CefContextMenuHandler,
                       public CefDisplayHandler,
                       public CefDownloadHandler,
+                      public CefDragHandler,
                       public CefGeolocationHandler,
                       public CefKeyboardHandler,
                       public CefLifeSpanHandler,
                       public CefLoadHandler,
+                      public CefRenderHandler,
                       public CefRequestHandler {
  public:
   // Interface for process message delegates. Do not perform work in the
@@ -49,21 +52,11 @@ class ClientHandler : public CefClient,
   typedef std::set<CefRefPtr<ProcessMessageDelegate> >
       ProcessMessageDelegateSet;
 
-  // Interface for request handler delegates. Do not perform work in the
-  // RequestDelegate constructor.
-  class RequestDelegate : public virtual CefBase {
+  // Interface implemented to handle off-screen rendering.
+  class RenderHandler : public CefRenderHandler {
    public:
-    // Called to retrieve a resource handler.
-    virtual CefRefPtr<CefResourceHandler> GetResourceHandler(
-        CefRefPtr<ClientHandler> handler,
-        CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefRequest> request) {
-      return NULL;
-    }
+    virtual void OnBeforeClose(CefRefPtr<CefBrowser> browser) =0;
   };
-
-  typedef std::set<CefRefPtr<RequestDelegate> > RequestDelegateSet;
 
   ClientHandler();
   virtual ~ClientHandler();
@@ -78,6 +71,9 @@ class ClientHandler : public CefClient,
   virtual CefRefPtr<CefDownloadHandler> GetDownloadHandler() OVERRIDE {
     return this;
   }
+  virtual CefRefPtr<CefDragHandler> GetDragHandler() OVERRIDE {
+    return this;
+  }
   virtual CefRefPtr<CefGeolocationHandler> GetGeolocationHandler() OVERRIDE {
     return this;
   }
@@ -88,6 +84,9 @@ class ClientHandler : public CefClient,
     return this;
   }
   virtual CefRefPtr<CefLoadHandler> GetLoadHandler() OVERRIDE {
+    return this;
+  }
+  virtual CefRefPtr<CefRenderHandler> GetRenderHandler() OVERRIDE {
     return this;
   }
   virtual CefRefPtr<CefRequestHandler> GetRequestHandler() OVERRIDE {
@@ -135,6 +134,11 @@ class ClientHandler : public CefClient,
       CefRefPtr<CefDownloadItem> download_item,
       CefRefPtr<CefDownloadItemCallback> callback) OVERRIDE;
 
+  // CefDragHandler methods
+  virtual bool OnDragEnter(CefRefPtr<CefBrowser> browser,
+                           CefRefPtr<CefDragData> dragData,
+                           DragOperationsMask mask) OVERRIDE;
+
   // CefGeolocationHandler methods
   virtual void OnRequestGeolocationPermission(
       CefRefPtr<CefBrowser> browser,
@@ -149,6 +153,15 @@ class ClientHandler : public CefClient,
                              bool* is_keyboard_shortcut) OVERRIDE;
 
   // CefLifeSpanHandler methods
+  virtual bool OnBeforePopup(CefRefPtr<CefBrowser> browser,
+                             CefRefPtr<CefFrame> frame,
+                             const CefString& target_url,
+                             const CefString& target_frame_name,
+                             const CefPopupFeatures& popupFeatures,
+                             CefWindowInfo& windowInfo,
+                             CefRefPtr<CefClient>& client,
+                             CefBrowserSettings& settings,
+                             bool* no_javascript_access) OVERRIDE;
   virtual void OnAfterCreated(CefRefPtr<CefBrowser> browser) OVERRIDE;
   virtual bool DoClose(CefRefPtr<CefBrowser> browser) OVERRIDE;
   virtual void OnBeforeClose(CefRefPtr<CefBrowser> browser) OVERRIDE;
@@ -180,9 +193,37 @@ class ClientHandler : public CefClient,
                                    const CefString& url,
                                    bool& allow_os_execution) OVERRIDE;
 
+  // CefRenderHandler methods
+  virtual bool GetRootScreenRect(CefRefPtr<CefBrowser> browser,
+                                 CefRect& rect) OVERRIDE;
+  virtual bool GetViewRect(CefRefPtr<CefBrowser> browser,
+                           CefRect& rect) OVERRIDE;
+  virtual bool GetScreenPoint(CefRefPtr<CefBrowser> browser,
+                              int viewX,
+                              int viewY,
+                              int& screenX,
+                              int& screenY) OVERRIDE;
+  virtual bool GetScreenInfo(CefRefPtr<CefBrowser> browser,
+                             CefScreenInfo& screen_info) OVERRIDE;
+  virtual void OnPopupShow(CefRefPtr<CefBrowser> browser, bool show) OVERRIDE;
+  virtual void OnPopupSize(CefRefPtr<CefBrowser> browser,
+                           const CefRect& rect) OVERRIDE;
+  virtual void OnPaint(CefRefPtr<CefBrowser> browser,
+                       PaintElementType type,
+                       const RectList& dirtyRects,
+                       const void* buffer,
+                       int width,
+                       int height) OVERRIDE;
+  virtual void OnCursorChange(CefRefPtr<CefBrowser> browser,
+                              CefCursorHandle cursor) OVERRIDE;
+
   void SetMainHwnd(CefWindowHandle hwnd);
   CefWindowHandle GetMainHwnd() { return m_MainHwnd; }
   void SetEditHwnd(CefWindowHandle hwnd);
+  void SetOSRHandler(CefRefPtr<RenderHandler> handler) {
+    m_OSRHandler = handler;
+  }
+  CefRefPtr<RenderHandler> GetOSRHandler() { return m_OSRHandler; }
   void SetButtonHwnds(CefWindowHandle backHwnd,
                       CefWindowHandle forwardHwnd,
                       CefWindowHandle reloadHwnd,
@@ -190,6 +231,14 @@ class ClientHandler : public CefClient,
 
   CefRefPtr<CefBrowser> GetBrowser() { return m_Browser; }
   int GetBrowserId() { return m_BrowserId; }
+
+  // Request that all existing browser windows close.
+  void CloseAllBrowsers(bool force_close);
+
+  // Returns true if the main browser window is currently closing. Used in
+  // combination with DoClose() and the OS close notification to properly handle
+  // 'onbeforeunload' JavaScript events during window close.
+  bool IsClosing() { return m_bIsClosing; }
 
   std::string GetLogFile();
 
@@ -204,7 +253,6 @@ class ClientHandler : public CefClient,
     NOTIFY_DOWNLOAD_ERROR,
   };
   void SendNotification(NotificationType type);
-  void CloseMainWindow();
 
   void ShowDevTools(CefRefPtr<CefBrowser> browser);
 
@@ -214,6 +262,11 @@ class ClientHandler : public CefClient,
   // Create an external browser window that loads the specified URL.
   static void LaunchExternalBrowser(const std::string& url);
 
+  void BeginTracing();
+  void EndTracing();
+
+  bool Save(const std::string& path, const std::string& data);
+
  protected:
   void SetLoading(bool isLoading);
   void SetNavState(bool canGoBack, bool canGoForward);
@@ -221,9 +274,6 @@ class ClientHandler : public CefClient,
   // Create all of ProcessMessageDelegate objects.
   static void CreateProcessMessageDelegates(
       ProcessMessageDelegateSet& delegates);
-
-  // Create all of RequestDelegateSet objects.
-  static void CreateRequestDelegates(RequestDelegateSet& delegates);
 
   // Test context menu creation.
   void BuildTestMenu(CefRefPtr<CefMenuModel> model);
@@ -241,11 +291,18 @@ class ClientHandler : public CefClient,
   // The child browser window
   CefRefPtr<CefBrowser> m_Browser;
 
+  // List of any popup browser windows. Only accessed on the CEF UI thread.
+  typedef std::list<CefRefPtr<CefBrowser> > BrowserList;
+  BrowserList m_PopupBrowsers;
+
   // The main frame window handle
   CefWindowHandle m_MainHwnd;
 
   // The child browser id
   int m_BrowserId;
+
+  // True if the main browser window is currently closing.
+  bool m_bIsClosing;
 
   // The edit window handle
   CefWindowHandle m_EditHwnd;
@@ -255,6 +312,8 @@ class ClientHandler : public CefClient,
   CefWindowHandle m_ForwardHwnd;
   CefWindowHandle m_StopHwnd;
   CefWindowHandle m_ReloadHwnd;
+
+  CefRefPtr<RenderHandler> m_OSRHandler;
 
   // Support for logging.
   std::string m_LogFile;
@@ -267,7 +326,6 @@ class ClientHandler : public CefClient,
 
   // Registered delegates.
   ProcessMessageDelegateSet process_message_delegates_;
-  RequestDelegateSet request_delegates_;
 
   // If true DevTools will be opened in an external browser window.
   bool m_bExternalDevTools;
@@ -278,15 +336,17 @@ class ClientHandler : public CefClient,
   // The startup URL.
   std::string m_StartupURL;
 
+  // True if mouse cursor change is disabled.
+  bool m_bMouseCursorChangeDisabled;
+
+  // Number of currently existing browser windows. The application will exit
+  // when the number of windows reaches 0.
+  static int m_BrowserCount;
+
   // Include the default reference counting implementation.
   IMPLEMENT_REFCOUNTING(ClientHandler);
   // Include the default locking implementation.
   IMPLEMENT_LOCKING(ClientHandler);
 };
-
-// Piaoger@Gateway: Show toolbar and navigation tools?
-bool showToolbar();
-bool showNavigationTools();
-bool enableCookie();
 
 #endif  // CEF_TESTS_CEFCLIENT_CLIENT_HANDLER_H_

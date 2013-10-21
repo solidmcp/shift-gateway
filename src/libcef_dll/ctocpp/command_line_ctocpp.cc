@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 //
@@ -18,9 +18,9 @@
 // STATIC METHODS - Body may be edited by hand.
 
 CefRefPtr<CefCommandLine> CefCommandLine::CreateCommandLine() {
-  int build_revision = cef_build_revision();
-  if (build_revision != CEF_REVISION) {
-    // The libcef build revision does not match the CEF API revision.
+  const char* api_hash = cef_api_hash(0);
+  if (strcmp(api_hash, CEF_API_HASH_PLATFORM)) {
+    // The libcef API hash does not match the current header API hash.
     DCHECK(false);
     return NULL;
   }
@@ -35,9 +35,9 @@ CefRefPtr<CefCommandLine> CefCommandLine::CreateCommandLine() {
 }
 
 CefRefPtr<CefCommandLine> CefCommandLine::GetGlobalCommandLine() {
-  int build_revision = cef_build_revision();
-  if (build_revision != CEF_REVISION) {
-    // The libcef build revision does not match the CEF API revision.
+  const char* api_hash = cef_api_hash(0);
+  if (strcmp(api_hash, CEF_API_HASH_PLATFORM)) {
+    // The libcef API hash does not match the current header API hash.
     DCHECK(false);
     return NULL;
   }
@@ -134,6 +134,30 @@ void CefCommandLineCToCpp::Reset() {
 
   // Execute
   struct_->reset(struct_);
+}
+
+void CefCommandLineCToCpp::GetArgv(std::vector<CefString>& argv) {
+  if (CEF_MEMBER_MISSING(struct_, get_argv))
+    return;
+
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Translate param: argv; type: string_vec_byref
+  cef_string_list_t argvList = cef_string_list_alloc();
+  DCHECK(argvList);
+  if (argvList)
+    transfer_string_list_contents(argv, argvList);
+
+  // Execute
+  struct_->get_argv(struct_,
+      argvList);
+
+  // Restore param:argv; type: string_vec_byref
+  if (argvList) {
+    argv.clear();
+    transfer_string_list_contents(argvList, argv);
+    cef_string_list_free(argvList);
+  }
 }
 
 CefString CefCommandLineCToCpp::GetCommandLineString() {

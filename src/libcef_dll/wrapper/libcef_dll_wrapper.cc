@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 //
@@ -12,6 +12,8 @@
 
 #include "include/cef_app.h"
 #include "include/capi/cef_app_capi.h"
+#include "include/cef_geolocation.h"
+#include "include/capi/cef_geolocation_capi.h"
 #include "include/cef_origin_whitelist.h"
 #include "include/capi/cef_origin_whitelist_capi.h"
 #include "include/cef_path_util.h"
@@ -22,6 +24,8 @@
 #include "include/capi/cef_scheme_capi.h"
 #include "include/cef_task.h"
 #include "include/capi/cef_task_capi.h"
+#include "include/cef_trace.h"
+#include "include/capi/cef_trace_capi.h"
 #include "include/cef_url.h"
 #include "include/capi/cef_url_capi.h"
 #include "include/cef_v8.h"
@@ -31,33 +35,40 @@
 #include "include/cef_version.h"
 #include "libcef_dll/cpptoc/app_cpptoc.h"
 #include "libcef_dll/cpptoc/browser_process_handler_cpptoc.h"
+#include "libcef_dll/cpptoc/completion_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/context_menu_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/cookie_visitor_cpptoc.h"
 #include "libcef_dll/cpptoc/domevent_listener_cpptoc.h"
 #include "libcef_dll/cpptoc/domvisitor_cpptoc.h"
+#include "libcef_dll/cpptoc/dialog_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/display_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/download_handler_cpptoc.h"
+#include "libcef_dll/cpptoc/drag_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/focus_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/geolocation_handler_cpptoc.h"
+#include "libcef_dll/cpptoc/get_geolocation_callback_cpptoc.h"
 #include "libcef_dll/cpptoc/jsdialog_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/keyboard_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/life_span_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/load_handler_cpptoc.h"
-#include "libcef_dll/cpptoc/proxy_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/read_handler_cpptoc.h"
+#include "libcef_dll/cpptoc/render_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/render_process_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/request_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/resource_bundle_handler_cpptoc.h"
 #include "libcef_dll/cpptoc/resource_handler_cpptoc.h"
+#include "libcef_dll/cpptoc/run_file_dialog_callback_cpptoc.h"
 #include "libcef_dll/cpptoc/scheme_handler_factory_cpptoc.h"
 #include "libcef_dll/cpptoc/string_visitor_cpptoc.h"
 #include "libcef_dll/cpptoc/task_cpptoc.h"
+#include "libcef_dll/cpptoc/trace_client_cpptoc.h"
 #include "libcef_dll/cpptoc/urlrequest_client_cpptoc.h"
 #include "libcef_dll/cpptoc/v8accessor_cpptoc.h"
 #include "libcef_dll/cpptoc/v8handler_cpptoc.h"
 #include "libcef_dll/cpptoc/web_plugin_info_visitor_cpptoc.h"
 #include "libcef_dll/cpptoc/web_plugin_unstable_callback_cpptoc.h"
 #include "libcef_dll/cpptoc/write_handler_cpptoc.h"
+#include "libcef_dll/ctocpp/allow_certificate_error_callback_ctocpp.h"
 #include "libcef_dll/ctocpp/auth_callback_ctocpp.h"
 #include "libcef_dll/ctocpp/before_download_callback_ctocpp.h"
 #include "libcef_dll/ctocpp/binary_value_ctocpp.h"
@@ -66,13 +77,14 @@
 #include "libcef_dll/ctocpp/callback_ctocpp.h"
 #include "libcef_dll/ctocpp/command_line_ctocpp.h"
 #include "libcef_dll/ctocpp/context_menu_params_ctocpp.h"
-#include "libcef_dll/ctocpp/cookie_manager_ctocpp.h"
 #include "libcef_dll/ctocpp/domdocument_ctocpp.h"
 #include "libcef_dll/ctocpp/domevent_ctocpp.h"
 #include "libcef_dll/ctocpp/domnode_ctocpp.h"
 #include "libcef_dll/ctocpp/dictionary_value_ctocpp.h"
 #include "libcef_dll/ctocpp/download_item_ctocpp.h"
 #include "libcef_dll/ctocpp/download_item_callback_ctocpp.h"
+#include "libcef_dll/ctocpp/drag_data_ctocpp.h"
+#include "libcef_dll/ctocpp/file_dialog_callback_ctocpp.h"
 #include "libcef_dll/ctocpp/frame_ctocpp.h"
 #include "libcef_dll/ctocpp/geolocation_callback_ctocpp.h"
 #include "libcef_dll/ctocpp/jsdialog_callback_ctocpp.h"
@@ -83,6 +95,7 @@
 #include "libcef_dll/ctocpp/scheme_registrar_ctocpp.h"
 #include "libcef_dll/ctocpp/stream_reader_ctocpp.h"
 #include "libcef_dll/ctocpp/stream_writer_ctocpp.h"
+#include "libcef_dll/ctocpp/task_runner_ctocpp.h"
 #include "libcef_dll/ctocpp/urlrequest_ctocpp.h"
 #include "libcef_dll/ctocpp/v8context_ctocpp.h"
 #include "libcef_dll/ctocpp/v8exception_ctocpp.h"
@@ -101,9 +114,9 @@
 
 CEF_GLOBAL int CefExecuteProcess(const CefMainArgs& args,
     CefRefPtr<CefApp> application) {
-  int build_revision = cef_build_revision();
-  if (build_revision != CEF_REVISION) {
-    // The libcef build revision does not match the CEF API revision.
+  const char* api_hash = cef_api_hash(0);
+  if (strcmp(api_hash, CEF_API_HASH_PLATFORM)) {
+    // The libcef API hash does not match the current header API hash.
     DCHECK(false);
     return 0;
   }
@@ -123,9 +136,9 @@ CEF_GLOBAL int CefExecuteProcess(const CefMainArgs& args,
 
 CEF_GLOBAL bool CefInitialize(const CefMainArgs& args,
     const CefSettings& settings, CefRefPtr<CefApp> application) {
-  int build_revision = cef_build_revision();
-  if (build_revision != CEF_REVISION) {
-    // The libcef build revision does not match the CEF API revision.
+  const char* api_hash = cef_api_hash(0);
+  if (strcmp(api_hash, CEF_API_HASH_PLATFORM)) {
+    // The libcef API hash does not match the current header API hash.
     DCHECK(false);
     return false;
   }
@@ -152,6 +165,7 @@ CEF_GLOBAL void CefShutdown() {
 
 #ifndef NDEBUG
   // Check that all wrapper objects have been destroyed
+  DCHECK_EQ(CefAllowCertificateErrorCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefAuthCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefBeforeDownloadCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefBinaryValueCToCpp::DebugObjCt, 0);
@@ -159,24 +173,29 @@ CEF_GLOBAL void CefShutdown() {
   DCHECK_EQ(CefBrowserHostCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefBrowserProcessHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefCallbackCToCpp::DebugObjCt, 0);
+  DCHECK_EQ(CefCompletionHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefContextMenuHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefContextMenuParamsCToCpp::DebugObjCt, 0);
-  DCHECK_EQ(CefCookieManagerCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefCookieVisitorCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefDOMDocumentCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefDOMEventCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefDOMEventListenerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefDOMNodeCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefDOMVisitorCppToC::DebugObjCt, 0);
+  DCHECK_EQ(CefDialogHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefDictionaryValueCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefDisplayHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefDownloadHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefDownloadItemCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefDownloadItemCallbackCToCpp::DebugObjCt, 0);
+  DCHECK_EQ(CefDragDataCToCpp::DebugObjCt, 0);
+  DCHECK_EQ(CefDragHandlerCppToC::DebugObjCt, 0);
+  DCHECK_EQ(CefFileDialogCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefFocusHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefFrameCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefGeolocationCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefGeolocationHandlerCppToC::DebugObjCt, 0);
+  DCHECK_EQ(CefGetGeolocationCallbackCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefJSDialogCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefJSDialogHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefKeyboardHandlerCppToC::DebugObjCt, 0);
@@ -185,19 +204,22 @@ CEF_GLOBAL void CefShutdown() {
   DCHECK_EQ(CefLoadHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefMenuModelCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefProcessMessageCToCpp::DebugObjCt, 0);
-  DCHECK_EQ(CefProxyHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefQuotaCallbackCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefReadHandlerCppToC::DebugObjCt, 0);
+  DCHECK_EQ(CefRenderHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefRenderProcessHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefRequestHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefResourceBundleHandlerCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefResourceHandlerCppToC::DebugObjCt, 0);
+  DCHECK_EQ(CefRunFileDialogCallbackCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefSchemeHandlerFactoryCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefSchemeRegistrarCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefStreamReaderCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefStreamWriterCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefStringVisitorCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefTaskCppToC::DebugObjCt, 0);
+  DCHECK_EQ(CefTaskRunnerCToCpp::DebugObjCt, 0);
+  DCHECK_EQ(CefTraceClientCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefURLRequestCToCpp::DebugObjCt, 0);
   DCHECK_EQ(CefURLRequestClientCppToC::DebugObjCt, 0);
   DCHECK_EQ(CefV8AccessorCppToC::DebugObjCt, 0);
@@ -235,6 +257,31 @@ CEF_GLOBAL void CefQuitMessageLoop() {
 
   // Execute
   cef_quit_message_loop();
+}
+
+CEF_GLOBAL void CefSetOSModalLoop(bool osModalLoop) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Execute
+  cef_set_osmodal_loop(
+      osModalLoop);
+}
+
+CEF_GLOBAL bool CefGetGeolocation(
+    CefRefPtr<CefGetGeolocationCallback> callback) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: callback; type: refptr_diff
+  DCHECK(callback.get());
+  if (!callback.get())
+    return false;
+
+  // Execute
+  int _retval = cef_get_geolocation(
+      CefGetGeolocationCallbackCppToC::Wrap(callback));
+
+  // Return type: bool
+  return _retval?true:false;
 }
 
 CEF_GLOBAL bool CefAddCrossOriginWhitelistEntry(const CefString& source_origin,
@@ -403,6 +450,51 @@ CEF_GLOBAL bool CefPostDelayedTask(CefThreadId threadId,
 
   // Return type: bool
   return _retval?true:false;
+}
+
+CEF_GLOBAL bool CefBeginTracing(CefRefPtr<CefTraceClient> client,
+    const CefString& categories) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Unverified params: client, categories
+
+  // Execute
+  int _retval = cef_begin_tracing(
+      CefTraceClientCppToC::Wrap(client),
+      categories.GetStruct());
+
+  // Return type: bool
+  return _retval?true:false;
+}
+
+CEF_GLOBAL bool CefGetTraceBufferPercentFullAsync() {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Execute
+  int _retval = cef_get_trace_buffer_percent_full_async();
+
+  // Return type: bool
+  return _retval?true:false;
+}
+
+CEF_GLOBAL bool CefEndTracingAsync() {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Execute
+  int _retval = cef_end_tracing_async();
+
+  // Return type: bool
+  return _retval?true:false;
+}
+
+CEF_GLOBAL int64 CefNowFromSystemTraceTime() {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Execute
+  int64 _retval = cef_now_from_system_trace_time();
+
+  // Return type: simple
+  return _retval;
 }
 
 CEF_GLOBAL bool CefParseURL(const CefString& url, CefURLParts& parts) {

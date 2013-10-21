@@ -71,6 +71,7 @@ class CefCriticalSection {
 #define CefCursorHandle cef_cursor_handle_t
 #define CefEventHandle cef_event_handle_t
 #define CefWindowHandle cef_window_handle_t
+#define CefTextInputContext cef_text_input_context_t
 
 struct CefMainArgsTraits {
   typedef cef_main_args_t struct_type;
@@ -120,6 +121,7 @@ struct CefWindowInfoTraits {
     target->menu = src->menu;
     target->window = src->window;
     target->transparent_painting = src->transparent_painting;
+    target->window_rendering_disabled = src->window_rendering_disabled;
   }
 };
 
@@ -158,6 +160,11 @@ class CefWindowInfo : public CefStructBase<CefWindowInfoTraits> {
 
   void SetTransparentPainting(BOOL transparentPainting) {
     transparent_painting = transparentPainting;
+  }
+
+  void SetAsOffScreen(HWND hWndParent) {
+    window_rendering_disabled = TRUE;
+    parent_window = hWndParent;
   }
 };
 

@@ -40,8 +40,10 @@
 
 #include "include/cef_base.h"
 #include "include/cef_context_menu_handler.h"
+#include "include/cef_dialog_handler.h"
 #include "include/cef_display_handler.h"
 #include "include/cef_download_handler.h"
+#include "include/cef_drag_handler.h"
 #include "include/cef_focus_handler.h"
 #include "include/cef_geolocation_handler.h"
 #include "include/cef_jsdialog_handler.h"
@@ -49,6 +51,7 @@
 #include "include/cef_life_span_handler.h"
 #include "include/cef_load_handler.h"
 #include "include/cef_process_message.h"
+#include "include/cef_render_handler.h"
 #include "include/cef_request_handler.h"
 
 ///
@@ -67,6 +70,15 @@ class CefClient : public virtual CefBase {
   }
 
   ///
+  // Return the handler for dialogs. If no handler is provided the default
+  // implementation will be used.
+  ///
+  /*--cef()--*/
+  virtual CefRefPtr<CefDialogHandler> GetDialogHandler() {
+    return NULL;
+  }
+
+  ///
   // Return the handler for browser display state events.
   ///
   /*--cef()--*/
@@ -80,6 +92,14 @@ class CefClient : public virtual CefBase {
   ///
   /*--cef()--*/
   virtual CefRefPtr<CefDownloadHandler> GetDownloadHandler() {
+    return NULL;
+  }
+
+  ///
+  // Return the handler for drag events.
+  ///
+  /*--cef()--*/
+  virtual CefRefPtr<CefDragHandler> GetDragHandler() {
     return NULL;
   }
 
@@ -130,6 +150,14 @@ class CefClient : public virtual CefBase {
   ///
   /*--cef()--*/
   virtual CefRefPtr<CefLoadHandler> GetLoadHandler() {
+    return NULL;
+  }
+
+  ///
+  // Return the handler for off-screen rendering events.
+  ///
+  /*--cef()--*/
+  virtual CefRefPtr<CefRenderHandler> GetRenderHandler() {
     return NULL;
   }
 

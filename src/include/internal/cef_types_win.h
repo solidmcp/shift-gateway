@@ -46,6 +46,7 @@ extern "C" {
 #define cef_cursor_handle_t HCURSOR
 #define cef_event_handle_t MSG*
 #define cef_window_handle_t HWND
+#define cef_text_input_context_t void*
 
 ///
 // Structure representing CefExecuteProcess arguments.
@@ -69,7 +70,16 @@ typedef struct _cef_window_info_t {
   cef_window_handle_t parent_window;
   HMENU menu;
 
+  // If window rendering is disabled no browser window will be created. Set
+  // |parent_window| to be used for identifying monitor info
+  // (MonitorFromWindow). If |parent_window| is not provided the main screen
+  // monitor will be used.
+  BOOL window_rendering_disabled;
+
   // Set to true to enable transparent painting.
+  // If window rendering is disabled and |transparent_painting| is set to true
+  // WebKit rendering will draw on a transparent background (RGBA=0x00000000).
+  // When this value is false the background will be white and opaque.
   BOOL transparent_painting;
 
   // Handle for the new browser window.

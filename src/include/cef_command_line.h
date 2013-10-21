@@ -61,14 +61,14 @@ class CefCommandLine : public virtual CefBase {
   ///
   // Create a new CefCommandLine instance.
   ///
-  /*--cef(revision_check)--*/
+  /*--cef(api_hash_check)--*/
   static CefRefPtr<CefCommandLine> CreateCommandLine();
 
   ///
   // Returns the singleton global CefCommandLine object. The returned object
   // will be read-only.
   ///
-  /*--cef(revision_check)--*/
+  /*--cef(api_hash_check)--*/
   static CefRefPtr<CefCommandLine> GetGlobalCommandLine();
 
   ///
@@ -112,6 +112,13 @@ class CefCommandLine : public virtual CefBase {
   ///
   /*--cef()--*/
   virtual void Reset() =0;
+
+  ///
+  // Retrieve the original command line string as a vector of strings.
+  // The argv array: { program, [(--|-|/)switch[=value]]*, [--], [argument]* }
+  ///
+  /*--cef()--*/
+  virtual void GetArgv(std::vector<CefString>& argv) =0;
 
   ///
   // Constructs and returns the represented command line string. Use this method
