@@ -2,6 +2,7 @@
 
 # cef big binaries
 ##############
+src/out
 src/Debug
 src/Release
 
