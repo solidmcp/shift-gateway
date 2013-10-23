@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/cefclient.h"
+#include "gateway/cefclient.h"
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -13,12 +13,12 @@
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
 #include "include/cef_runnable.h"
-#include "cefclient/cefclient_osr_widget_win.h"
-#include "cefclient/client_handler.h"
-#include "cefclient/client_switches.h"
-#include "cefclient/resource.h"
-#include "cefclient/scheme_test.h"
-#include "cefclient/string_util.h"
+#include "gateway/cefclient_osr_widget_win.h"
+#include "gateway/client_handler.h"
+#include "gateway/client_switches.h"
+#include "gateway/resource.h"
+#include "gateway/scheme_test.h"
+#include "gateway/string_util.h"
 
 #define MAX_LOADSTRING 100
 #define MAX_URL_LENGTH  255
@@ -108,7 +108,13 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   if (!InitInstance (hInstance, nCmdShow))
     return FALSE;
 
-  hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CEFCLIENT));
+  // Piaoger:Disable main toolbar
+  // Disable main toolbar
+  if(!showToolbar()) {
+    hAccelTable = NULL;
+  } else {
+    hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CEFCLIENT));
+  }
 
   int result = 0;
 
@@ -166,10 +172,17 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
   wcex.cbClsExtra    = 0;
   wcex.cbWndExtra    = 0;
   wcex.hInstance     = hInstance;
-  wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_CEFCLIENT));
+  wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GATEWAY));
   wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
   wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
-  wcex.lpszMenuName  = MAKEINTRESOURCE(IDC_CEFCLIENT);
+
+  // Piaoger@Gateway: Mainmenu
+  if(!showToolbar()) {
+    wcex.lpszMenuName  = NULL;
+  } else {
+    wcex.lpszMenuName  = MAKEINTRESOURCE(IDC_CEFCLIENT);
+  }
+  
   wcex.lpszClassName = szWindowClass;
   wcex.hIconSm       = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -271,51 +284,58 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
 
       GetClientRect(hWnd, &rect);
 
-      backWnd = CreateWindow(L"BUTTON", L"Back",
+      // Piaoger@Gateway: Disable Toolbar
+      if(!showNavigationTools()) {
+        // Do nothing ...
+      } else {
+        backWnd = CreateWindow(L"BUTTON", L"Back",
                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                               | WS_DISABLED, x, 0, BUTTON_WIDTH, URLBAR_HEIGHT,
                               hWnd, (HMENU) IDC_NAV_BACK, hInst, 0);
-      x += BUTTON_WIDTH;
+        x += BUTTON_WIDTH;
 
-      forwardWnd = CreateWindow(L"BUTTON", L"Forward",
+        forwardWnd = CreateWindow(L"BUTTON", L"Forward",
                                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                                 | WS_DISABLED, x, 0, BUTTON_WIDTH,
                                 URLBAR_HEIGHT, hWnd, (HMENU) IDC_NAV_FORWARD,
                                 hInst, 0);
-      x += BUTTON_WIDTH;
+        x += BUTTON_WIDTH;
 
-      reloadWnd = CreateWindow(L"BUTTON", L"Reload",
+        reloadWnd = CreateWindow(L"BUTTON", L"Reload",
                                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                                 | WS_DISABLED, x, 0, BUTTON_WIDTH,
                                 URLBAR_HEIGHT, hWnd, (HMENU) IDC_NAV_RELOAD,
                                 hInst, 0);
-      x += BUTTON_WIDTH;
+        x += BUTTON_WIDTH;
 
-      stopWnd = CreateWindow(L"BUTTON", L"Stop",
+        stopWnd = CreateWindow(L"BUTTON", L"Stop",
                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON
                               | WS_DISABLED, x, 0, BUTTON_WIDTH, URLBAR_HEIGHT,
                               hWnd, (HMENU) IDC_NAV_STOP, hInst, 0);
-      x += BUTTON_WIDTH;
+        x += BUTTON_WIDTH;
 
-      editWnd = CreateWindow(L"EDIT", 0,
+        editWnd = CreateWindow(L"EDIT", 0,
                               WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT |
                               ES_AUTOVSCROLL | ES_AUTOHSCROLL| WS_DISABLED,
                               x, 0, rect.right - BUTTON_WIDTH * 4,
                               URLBAR_HEIGHT, hWnd, 0, hInst, 0);
 
-      // Assign the edit window's WNDPROC to this function so that we can
-      // capture the enter key
-      editWndOldProc =
-          reinterpret_cast<WNDPROC>(GetWindowLongPtr(editWnd, GWLP_WNDPROC));
-      SetWindowLongPtr(editWnd, GWLP_WNDPROC,
-          reinterpret_cast<LONG_PTR>(WndProc));
-      g_handler->SetEditHwnd(editWnd);
-      g_handler->SetButtonHwnds(backWnd, forwardWnd, reloadWnd, stopWnd);
+        // Assign the edit window's WNDPROC to this function so that we can
+        // capture the enter key
+        editWndOldProc =
+            reinterpret_cast<WNDPROC>(GetWindowLongPtr(editWnd, GWLP_WNDPROC));
+        SetWindowLongPtr(editWnd, GWLP_WNDPROC,
+            reinterpret_cast<LONG_PTR>(WndProc));
+        g_handler->SetEditHwnd(editWnd);
+        g_handler->SetButtonHwnds(backWnd, forwardWnd, reloadWnd, stopWnd);
 
-      rect.top += URLBAR_HEIGHT;
-
+        rect.top += URLBAR_HEIGHT;
+      }
+      
       CefWindowInfo info;
       CefBrowserSettings settings;
+
+      AppGetBrowserSettings(settings);
 
       if (AppIsOffScreenRenderingEnabled()) {
         CefRefPtr<CefCommandLine> cmd_line = AppGetCommandLine();
@@ -361,8 +381,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
           std::wstringstream ss;
           ss << L"Console messages will be written to "
               << std::wstring(CefString(g_handler->GetLogFile()));
-          MessageBox(hWnd, ss.str().c_str(), L"Console Messages",
-              MB_OK | MB_ICONINFORMATION);
+
+          // Piaoger@Gateway: disable messagebox
+          // Disable console message box
+          if(!showNavigationTools()) {
+          // Do nothing ...
+          } else {
+            MessageBox(hWnd, ss.str().c_str(), L"Console Messages",
+                MB_OK | MB_ICONINFORMATION);
+          }
         }
         return 0;
       case ID_WARN_DOWNLOADCOMPLETE:
@@ -471,13 +498,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
           // window size
           RECT rect;
           GetClientRect(hWnd, &rect);
-          rect.top += URLBAR_HEIGHT;
 
-          int urloffset = rect.left + BUTTON_WIDTH * 4;
+          // Piaoger@Gateway: Disable Toolbar
+          int urloffset = 0;
+          if(!showNavigationTools()) {
+            // Do nothing ... 
+          } else {
+            rect.top += URLBAR_HEIGHT;
+            urloffset = rect.left + BUTTON_WIDTH * 4;
+          }
 
           HDWP hdwp = BeginDeferWindowPos(1);
-          hdwp = DeferWindowPos(hdwp, editWnd, NULL, urloffset,
+
+          // Piaoger@Gateway: Disable Toolbar
+          if(!showNavigationTools()) {
+            // Do nothing ... 
+          } else {
+            hdwp = DeferWindowPos(hdwp, editWnd, NULL, urloffset,
             0, rect.right - urloffset, URLBAR_HEIGHT, SWP_NOZORDER);
+          }
+
           hdwp = DeferWindowPos(hdwp, hwnd, NULL,
             rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
             SWP_NOZORDER);

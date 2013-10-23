@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/client_handler.h"
+#include "gateway/client_handler.h"
 #include <stdio.h>
 #include <algorithm>
 #include <set>
@@ -18,15 +18,15 @@
 #include "include/cef_trace.h"
 #include "include/cef_url.h"
 #include "include/wrapper/cef_stream_resource_handler.h"
-#include "cefclient/binding_test.h"
-#include "cefclient/cefclient.h"
-#include "cefclient/client_renderer.h"
-#include "cefclient/client_switches.h"
-#include "cefclient/dialog_test.h"
-#include "cefclient/dom_test.h"
-#include "cefclient/resource_util.h"
-#include "cefclient/string_util.h"
-#include "cefclient/window_test.h"
+#include "gateway/binding_test.h"
+#include "gateway/cefclient.h"
+#include "gateway/client_renderer.h"
+#include "gateway/client_switches.h"
+#include "gateway/dialog_test.h"
+#include "gateway/dom_test.h"
+#include "gateway/resource_util.h"
+#include "gateway/string_util.h"
+#include "gateway/window_test.h"
 
 namespace {
 
@@ -105,6 +105,9 @@ ClientHandler::ClientHandler()
 
   if (command_line->HasSwitch(cefclient::kUrl))
     m_StartupURL = command_line->GetSwitchValue(cefclient::kUrl);
+
+  // Piaoger@Gateway: Change start Uri
+  // Start from our web root, not google.com instead.
   if (m_StartupURL.empty())
     m_StartupURL = "http://www.google.com/";
 
@@ -203,41 +206,48 @@ bool ClientHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
                                      const CefString& source,
                                      int line) {
   REQUIRE_UI_THREAD();
+  
+  // Piaoger@Gateway: Disable log
 
+  /*
+#if !defined(WEB_INSTALL)
   bool first_message;
   std::string logFile;
 
   {
-    AutoLock lock_scope(this);
+      AutoLock lock_scope(this);
 
-    first_message = m_LogFile.empty();
-    if (first_message) {
-      std::stringstream ss;
-      ss << AppGetWorkingDirectory();
+      first_message = m_LogFile.empty();
+      if (first_message) {
+          std::stringstream ss;
+          ss << AppGetWorkingDirectory();
 #if defined(OS_WIN)
-      ss << "\\";
+          ss << "\\";
 #else
-      ss << "/";
+          ss << "/";
 #endif
-      ss << "console.log";
-      m_LogFile = ss.str();
-    }
-    logFile = m_LogFile;
+          ss << "console.log";
+          m_LogFile = ss.str();
+      }
+      logFile = m_LogFile;
   }
 
   FILE* file = fopen(logFile.c_str(), "a");
   if (file) {
-    std::stringstream ss;
-    ss << "Message: " << std::string(message) << "\r\nSource: " <<
-        std::string(source) << "\r\nLine: " << line <<
-        "\r\n-----------------------\r\n";
-    fputs(ss.str().c_str(), file);
-    fclose(file);
+      std::stringstream ss;
+      ss << "Message: " << std::string(message) << "\r\nSource: " <<
+          std::string(source) << "\r\nLine: " << line <<
+          "\r\n-----------------------\r\n";
+      fputs(ss.str().c_str(), file);
+      fclose(file);
 
-    if (first_message)
-      SendNotification(NOTIFY_CONSOLE_MESSAGE);
+      if (first_message)
+          SendNotification(NOTIFY_CONSOLE_MESSAGE);
   }
 
+#endif
+  */
+  
   return false;
 }
 
@@ -287,7 +297,11 @@ bool ClientHandler::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
                                   const CefKeyEvent& event,
                                   CefEventHandle os_event,
                                   bool* is_keyboard_shortcut) {
+  // Piaoger@Gateway: Why disable spacebar brutely??
+  /*
   if (!event.focus_on_editable_field && event.windows_key_code == 0x20) {
+
+
     // Special handling for the space character when an input element does not
     // have focus. Handling the event in OnPreKeyEvent() keeps the event from
     // being processed in the renderer. If we instead handled the event in the
@@ -299,8 +313,9 @@ bool ClientHandler::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
     }
     return true;
   }
-
+  */
   return false;
+
 }
 
 bool ClientHandler::OnBeforePopup(CefRefPtr<CefBrowser> browser,
@@ -798,3 +813,23 @@ bool ClientHandler::ExecuteTestMenu(int command_id) {
   return false;
 }
 
+// Piaoger@Gateway
+bool showToolbar()
+{
+    static bool sShowToolbar = true;
+    return sShowToolbar;
+}
+
+// Piaoger@Gateway
+bool showNavigationTools()
+{
+    static bool sNavigationTools = true;
+    return sNavigationTools;
+}
+
+// Piaoger@Gateway
+bool enableCookie()
+{
+    static bool sEnableCookit = true;
+    return sEnableCookit;
+}

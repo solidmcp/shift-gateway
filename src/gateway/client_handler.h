@@ -11,7 +11,7 @@
 #include <set>
 #include <string>
 #include "include/cef_client.h"
-#include "cefclient/util.h"
+#include "gateway/util.h"
 
 
 // Define this value to redirect all popup URLs to the main application browser
@@ -348,5 +348,10 @@ class ClientHandler : public CefClient,
   // Include the default locking implementation.
   IMPLEMENT_LOCKING(ClientHandler);
 };
+
+// Piaoger@Gateway: Show toolbar and navigation tools?
+bool showToolbar();
+bool showNavigationTools();
+bool enableCookie();
 
 #endif  // CEF_TESTS_CEFCLIENT_CLIENT_HANDLER_H_

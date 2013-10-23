@@ -13,7 +13,7 @@
 #define IDD_ABOUTBOX                    103
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
-#define IDI_CEFCLIENT                   107
+#define IDI_GATEWAY                     107
 #define IDI_SMALL                       108
 #define IDC_CEFCLIENT                   109
 #define IDS_OSR_WIDGET_CLASS            110

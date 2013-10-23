@@ -27,7 +27,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="cefclient.gyp"/>
+    <None Include="gateway.gyp"/>
     <ClInclude Include="include\cef_request.h">
       <Filter>include</Filter>
     </ClInclude>

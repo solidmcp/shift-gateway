@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/cefclient.h"
+#include "gateway/cefclient.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <sstream>
@@ -13,10 +13,10 @@
 #include "include/cef_frame.h"
 #include "include/cef_runnable.h"
 #include "include/cef_web_plugin.h"
-#include "cefclient/client_handler.h"
-#include "cefclient/client_switches.h"
-#include "cefclient/string_util.h"
-#include "cefclient/util.h"
+#include "gateway/client_handler.h"
+#include "gateway/client_switches.h"
+#include "gateway/string_util.h"
+#include "gateway/util.h"
 
 CefRefPtr<ClientHandler> g_handler;
 CefRefPtr<CefCommandLine> g_command_line;
@@ -66,6 +66,22 @@ void AppGetSettings(CefSettings& settings) {
   // Specify a port to enable DevTools if one isn't already specified.
   if (!g_command_line->HasSwitch("remote-debugging-port"))
     settings.remote_debugging_port = 8088;
+
+#if defined(WEB_INSTALL)
+    settings.log_severity = LOGSEVERITY_DISABLE;
+#endif
+}
+
+void AppGetBrowserSettings(CefBrowserSettings& settings) {
+    // Piaoger@Gateway: universal_access_from_file_urls_allowed
+    settings.universal_access_from_file_urls = STATE_ENABLED;
+    
+    // Piaoger@Gateway: Enabled file:///
+    //   For more Chrome swithes, please see following pages:
+    //     http://src.chromium.org/viewvc/chrome/trunk/src/content/public/common/content_switches.h
+    //     http://peter.sh/experiments/chromium-command-line-switches/
+    settings.file_access_from_file_urls = STATE_ENABLED;
+    settings.accelerated_compositing = STATE_ENABLED;
 }
 
 bool AppIsOffScreenRenderingEnabled() {

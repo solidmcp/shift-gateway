@@ -2,13 +2,13 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#include "cefclient/cefclient_osr_widget_win.h"
+#include "gateway/cefclient_osr_widget_win.h"
 
 #include <windowsx.h>
 
 #include "include/cef_runnable.h"
-#include "cefclient/resource.h"
-#include "cefclient/util.h"
+#include "gateway/resource.h"
+#include "gateway/util.h"
 
 // static
 CefRefPtr<OSRWindow> OSRWindow::Create(OSRBrowserProvider* browser_provider,
