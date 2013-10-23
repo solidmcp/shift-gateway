@@ -322,7 +322,7 @@
       <ImportLibrary>$(OutDir)lib\$(TargetName).lib</ImportLibrary>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)\DesignClient.exe</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName)$(TargetExt)</OutputFile>
       <Profile>true</Profile>
       <ProgramDatabaseFile>$(TargetPath).pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
@@ -380,7 +380,7 @@
       <ImportLibrary>$(OutDir)lib\$(TargetName).lib</ImportLibrary>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)\DesignClient.exe</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName)$(TargetExt)</OutputFile>
       <Profile>true</Profile>
       <ProgramDatabaseFile>$(TargetPath).pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
@@ -438,7 +438,7 @@
       <ImportLibrary>$(OutDir)lib\$(TargetName).lib</ImportLibrary>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)\DesignClient.exe</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName)$(TargetExt)</OutputFile>
       <Profile>true</Profile>
       <ProgramDatabaseFile>$(TargetPath).pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
@@ -496,7 +496,7 @@
       <ImportLibrary>$(OutDir)lib\$(TargetName).lib</ImportLibrary>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)\DesignClient.exe</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName)$(TargetExt)</OutputFile>
       <Profile>true</Profile>
       <ProgramDatabaseFile>$(TargetPath).pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
